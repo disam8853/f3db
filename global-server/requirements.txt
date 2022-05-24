@@ -1,0 +1,5 @@
+flask
+sklearn
+networkx
+pymongo
+pandas
