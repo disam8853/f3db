@@ -1,0 +1,37 @@
+version: "3.9"
+services:
+  global-server:
+    build: ../global-server
+    ports:
+      - 20000:8999
+  collaborator1:
+    build: ../collaborator
+    ports:
+      - 20001:9000
+    environment:
+      - MONGODB_URL=mongodb://collaborator1:collaborator1@mongo1:27017/
+      - flask_host=localhost
+      - flask_port=9000
+  collaborator2:
+    build: ../collaborator
+    ports:
+      - 20002:9000
+    environment:
+      - MONGODB_URL=mongodb://collaborator1:collaborator1@mongo1:27017/
+      - flask_host=localhost
+      - flask_port=9000
+  mongo1:
+    image: mongo
+    volumes:
+      - ./volumn/collaborator1/mongodb:/data/db
+    restart: always
+    environment:
+      - MONGODB_URL=mongodb://collaborator2:collaborator2@mongo2:27017/
+  mongo2:
+    image: mongo
+    volumes:
+      - ./volumn/collaborator2/mongodb:/data/db
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: collaborator2
+      MONGO_INITDB_ROOT_PASSWORD: collaborator2
