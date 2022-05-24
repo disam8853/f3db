@@ -1,11 +1,11 @@
 from flask import Flask, request, abort
+from environs import Env
 
-import configparser
+env = Env()
+env.read_env()
 
 app = Flask(__name__)
 
-config = configparser.ConfigParser()
-config.read('config.ini')
 
 @app.route("/", methods=['GET'])
 def get():
@@ -22,6 +22,6 @@ def callback():
 
 
 if __name__ == "__main__":
-    app.run(host=config['ENV']['GLOBAL_HOST'], port=config['ENV']['GLOBAL_PORT'])
+    app.run(host=env("flask_host"), port=env("flask_port"))
     # from waitress import serve
     # serve(app, host=config['ENV']['HOST'], port=config['ENV']['PORT']) 
