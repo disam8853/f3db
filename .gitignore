@@ -1,4 +1,5 @@
 container/volumn/**/mongodb
+container/dataMongo
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
