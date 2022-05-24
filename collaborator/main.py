@@ -1,4 +1,3 @@
-from turtle import Turtle
 from flask import Flask, request, abort, jsonify
 from db_reader import read_mongo
 from data_preprocessing import basic_data_transform
