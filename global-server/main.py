@@ -33,7 +33,7 @@ async def train_model():
         async with aiohttp.ClientSession() as session:
             await asyncio.gather(*[post(f'{url}/data/process', request.data, session) for url in collaborators])
     except Exception:
-        return Response('Request a train failed', 500)
+        return Response('Request a train failed!', 500)
     print("All collaborators have been noticed")
     return 'ok'
 
