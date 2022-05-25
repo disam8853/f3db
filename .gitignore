@@ -1,6 +1,9 @@
 container/volumn/**/mongodb
 container/dataMongo
 
+graph.ipynb
+test.gml.gz
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
