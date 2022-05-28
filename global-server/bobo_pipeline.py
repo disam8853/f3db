@@ -304,13 +304,17 @@ class Pipeline(_BaseComposition):
 
         fit_transform_one_cached = memory.cache(_fit_transform_one)
 
+        last_transformer = None
         for step_idx, name, transformer in self._iter(
             with_final=False, filter_passthrough=False
         ):  
             print(f"iter {step_idx}: {name} -> {transformer}")
-        
+            self.dag.add_node(transformer, time=current_time(), mode='circle')
             if step_idx != 0:
-                self.dag.add_edge(self.steps[step_idx - 1][1], transformer)
+                print(last_transformer, transformer)
+                print(type(last_transformer), type(t))
+                self.dag.add_edge(last_transformer, transformer)
+            last_transformer = transformer
 
             if transformer is None or transformer == "passthrough":
                 with _print_elapsed_time("Pipeline", self._log_message(step_idx)):
@@ -364,7 +368,8 @@ class Pipeline(_BaseComposition):
         with _print_elapsed_time("Pipeline", self._log_message(len(self.steps) - 1)):
             if self._final_estimator != "passthrough":
                 fit_params_last_step = fit_params_steps[self.steps[-1][0]]
-                self.dag.add_node("save_data", time=current_time(), filepath="data")
+                self.dag.add_node("SaveData()", time=current_time(), mode='triangle', filepath="data")
+                self.dag.add_edge(self.steps[-2][1], "SaveData()")
                 self._final_estimator.fit(Xt, y, **fit_params_last_step)
 
         return self
