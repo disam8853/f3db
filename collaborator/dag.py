@@ -1,7 +1,3 @@
-# TODO: union collaborator and global dag
-# TODO: maintain consistency between global & local dag
-
-
 import networkx as nx
 from utils import current_time, current_date
 

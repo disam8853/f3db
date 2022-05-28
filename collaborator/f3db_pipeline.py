@@ -65,7 +65,7 @@ def generate_collection_version(dataframe):
     return hash
 
 
-def build_data_node(dag, dataframe, collection="", collection_version="", experiment_number="", tag=""):
+def build_data_node(dag, dataframe, collection=""):
 
 
     node_id, node_info, node_filepath = generate_node(
@@ -76,7 +76,7 @@ def build_data_node(dag, dataframe, collection="", collection_version="", experi
     return dag
 
 
-def get_surrogate_number(path, prefix) -> str:
+def get_max_surrogate_number(path, prefix) -> int:
     same_files = []
     for file in os.listdir(path):
         if file.startswith(prefix):
@@ -85,14 +85,14 @@ def get_surrogate_number(path, prefix) -> str:
     version_nums = [ int(x.split("_")[-1].split(".")[0]) for x in same_files]
 
     if version_nums == []:
-        return str(0)
-    return str(max(version_nums) + 1)
+        return -1
+    return max(version_nums)
     
 
 def generate_node_id(type="", who="", user="", tag="") -> str:
     date = current_date()
     node_id = '_'.join([type, who, user, tag, date])
-    version_num = "_" + get_surrogate_number(DATA_FOLDER, node_id)
+    version_num = "_" + str(get_max_surrogate_number(DATA_FOLDER, node_id) + 1)
     node_id += version_num
     return node_id
 
