@@ -1,6 +1,9 @@
 container/volumn/**/mongodb
 container/dataMongo
 
+dev-container/volumn/**/mongodb
+dev-container/dataMongo
+
 graph.ipynb
 test.gml.gz
 
