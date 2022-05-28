@@ -1,0 +1,66 @@
+version: "3.9"
+services:
+  global-server:
+    build: ../global-server
+    ports:
+      - 20000:8000
+    volumes:
+      - ../global-server:/app
+    environment:
+      - MONGODB_URL=mongodb://mongo-global:27017/f3db
+      - FLASK_APP=main.py
+      - FLASK_ENV=development
+      - FLASK_RUN_PORT=8000
+      - FLASK_RUN_HOST=0.0.0.0
+      - COLLABORATORS_URL=http://collaborator1,http://collaborator2
+  collaborator1:
+    build: ../collaborator
+    ports:
+      - 20001:8000
+    volumes:
+      - ../collaborator:/app
+    environment:
+      - MONGODB_URL=mongodb://mongo1:27017/f3db
+      - FLASK_APP=main.py
+      - FLASK_ENV=development
+      - FLASK_RUN_PORT=8000
+      - FLASK_RUN_HOST=0.0.0.0
+  collaborator2:
+    build: ../collaborator
+    ports:
+      - 20002:8000
+    volumes:
+      - ../collaborator:/app
+    environment:
+      - MONGODB_URL=mongodb://mongo2:27017/f3db
+      - FLASK_APP=main.py
+      - FLASK_ENV=development
+      - FLASK_RUN_PORT=8000
+      - FLASK_RUN_HOST=0.0.0.0
+  mongo-global:
+    image: mongo
+    volumes:
+      - ./volumn/global-server/mongodb:/data/db
+    ports:
+      - 27027:27017
+    restart: always
+    environment:
+      - MONGO_INITDB_DATABASE=f3db
+  mongo1:
+    image: mongo
+    volumes:
+      - ./volumn/collaborator1/mongodb:/data/db
+    ports:
+      - 27037:27017
+    restart: always
+    environment:
+      - MONGO_INITDB_DATABASE=f3db
+  mongo2:
+    image: mongo
+    volumes:
+      - ./volumn/collaborator2/mongodb:/data/db
+    ports:
+      - 27047:27017
+    restart: always
+    environment:
+      - MONGO_INITDB_DATABASE=f3db

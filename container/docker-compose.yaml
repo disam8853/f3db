@@ -7,19 +7,15 @@ services:
   collaborator1:
     build: ../collaborator
     ports:
-      - 20001:9000
+      - 20001:5000
     environment:
       - MONGODB_URL=mongodb://collaborator1:collaborator1@mongo1:27017/
-      - flask_host=localhost
-      - flask_port=9000
   collaborator2:
     build: ../collaborator
     ports:
-      - 20002:9000
+      - 20002:5000
     environment:
       - MONGODB_URL=mongodb://collaborator1:collaborator1@mongo1:27017/
-      - flask_host=localhost
-      - flask_port=9000
   mongo1:
     image: mongo
     volumes:
