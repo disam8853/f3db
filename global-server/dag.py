@@ -1,5 +1,5 @@
 import networkx as nx
-from utils import current_time
+from utils import current_time, current_date
 
 class DAG():
     def dag_refresh(func):
@@ -44,7 +44,23 @@ class DAG():
     @dag_refresh
     def add_node(self, index, **attr) -> bool:
         try:
-            self.G.add_node(index, **attr)
+            node = {
+                'who': 'global-server',
+                'user': 'bobo',
+                'date': current_date(),
+                'time': current_time(),
+                'dataset': 'default dataset',
+                'dataset_version': 0,
+                'experiment_number': 0,
+                'tag': 'test-tag',
+                'type': 'data', # data or model
+                'filepath':'default filepath'
+            }
+
+            for key, value in attr.items():
+                node[key] = value
+
+            self.G.add_node(index, **node)
             return True
         except nx.NetworkXError as err:
             print(str(err))
@@ -113,7 +129,7 @@ if __name__ == "__main__":
     print(DAG)
 
     print("\n**** add/remove node/edge ****")
-    print("add node:", dag.add_node("bobo1", time=current_time(), filepath="./bobo1"))
+    print("add node:", dag.add_node("bobo1", filepath="./bobo1"))
     print("add edge: ", dag.add_edge("bobo1", "bobo2"))
     print("add edge: ", dag.add_edge("bobo2", "bobo3"))
     print("add edge: ", dag.add_edge("bobo3", "bobo1"))

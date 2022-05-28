@@ -8,5 +8,5 @@ def current_time():
 
 def current_date():
     t = time.localtime()
-    return time.strftime("%Y:%m:%d", t)
+    return time.strftime("%Y-%m-%d", t)
     
