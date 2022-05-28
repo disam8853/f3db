@@ -1,0 +1,43 @@
+{
+    "collaborator": [
+        {
+            "name": "StandardScaler",
+            "parameter": []
+        },
+        {
+            "name": "SaveData",
+            "parameter": []
+        },
+        {
+            "name": "StandardScaler",
+            "parameter": []
+        }
+    ],
+    "global-server": [
+
+        {
+            "name": "PCA",
+            "parameter": []
+        },
+        {
+            "name": "SaveData",
+            "parameter": []
+        },
+        {
+            "name": "PCA",
+            "parameter": []
+        },
+        {
+            "name": "train_test_split",
+            "parameter": []
+        },
+        {
+            "name": "StandardScaler",
+            "parameter": []
+        },
+        {
+            "name": "SVC",
+            "parameter": []
+        }
+    ]
+}

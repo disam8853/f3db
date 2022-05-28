@@ -19,6 +19,9 @@ from sklearn.utils.validation import check_is_fitted
 from dag import DAG
 from utils import current_date, current_time
 from joblib import dump, load
+
+from parse import parse
+
 """
 def psudocode():
 
@@ -118,10 +121,42 @@ def read_model():
     print(clf.classes_)
 
 if __name__ == "__main__":
-    op_data = [('pca', PCA()), ('scaler', StandardScaler())]
-    dag = DAG(nx.MultiDiGraph())
-    build_pipeline(dag, 1, op_data)
+    # op_data = [('pca', PCA()), ('scaler', StandardScaler())]
+    # dag = DAG(nx.MultiDiGraph())
+    # build_pipeline(dag, 1, op_data)
 
-    op_model = [('pca', PCA()), ('scaler', StandardScaler()), ('svc', SVC())]
+    # op_model = [('pca', PCA()), ('scaler', StandardScaler()), ('svc', SVC())]
+    raw_pipe = {
+    "collaborator": [
+        {
+            "name": "StandardScaler",
+            "parameter": []
+        },
+        {
+            "name": "SaveData",
+            "parameter": []
+        },
+        {
+            "name": "StandardScaler",
+            "parameter": []
+        }
+    ],
+    "global-server": [
+        {
+            "name": "StandardScaler",
+            "parameter": []
+        },
+        {
+            "name": "PCA",
+            "parameter": []
+        },
+        {
+            "name": "SVC",
+            "parameter": []
+        }
+    ]
+}
+    op_str = parse(raw_pipe, 'global-server')
+    # print(op_str)
     dag = DAG(nx.MultiDiGraph())
-    build_pipeline(dag, 1, op_model)
+    build_pipeline(dag, 1, op_str[0])
