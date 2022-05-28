@@ -1,0 +1,57 @@
+@startuml F3DB
+title F3DB
+actor       Client      as c
+entity      "Global Server" as gs
+database    "Global Server DB" as db_gs
+entity      Collaborator as col
+database    "Collaborator DB" as db_col
+
+== Create Pipeline ==
+
+c -> gs: `POST /pipeline`\nwith pipeline info
+group for every collaborators [wait until all collaborators respond]
+gs -> col: `POST /pipeline`\nwith collaborator pipeline
+col -> db_col ++: save pipeline to MongoDB
+return saved to Col DB!
+col --> gs: ack!
+end
+gs -> db_gs++: save pipeline to Global Server DB
+return saved to GS DB!
+gs --> c: Global Server pipeline ID
+
+== Execute Pipeline ==
+
+c -> gs: `POST /pipeline/fit`\nwith collection and query in body
+gs -> db_gs++: find pipeline with pipeline ID
+return Global Server pipeline
+
+group for every collaborators [wait until all collaborators respond]
+gs -> col: `POST /data/process`\nwith pipeline and colleciton data
+return ack
+end
+
+gs --> c: ok
+
+group for every collaborators [wait until all collaborators respond]
+col -> col_subprocess **: create subprocess
+col_subprocess -> db_col++: find pipeline with pipeline ID
+return Collaborator pipeline
+col_subprocess -> db_col++: find training data with collection
+return training data
+col_subprocess -> col_subprocess: execute Collaborator pipeline
+col_subprocess -> db_col++: save intermediate data to Col DB\nas a DAG
+return
+col_subprocess --> gs: intermediate data and pipeline ID and DAG
+col_subprocess -> col_subprocess !!: close subprocess
+end
+
+gs -> db_gs++: find pipeline with pipeline ID
+return Global Server pipeline
+gs -> gs: merge DAG and intermediate data
+gs -> gs: execute Global Server pipeline
+gs -> gs: fit final estimator
+gs -> db_gs++: save intermediate data and model\nto GS DB
+return
+gs --> c: model ID
+
+@enduml

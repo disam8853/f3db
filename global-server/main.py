@@ -42,35 +42,6 @@ async def post(url, data, session):
         raise e
 
 
-@app.route("/model/train", methods=["POST"])
-async def train_model():
-    data = request.json
-
-    if 'pipeline_id' not in data:
-        return Response('Must provide correct pipeline ID!', 400)
-    elif 'collection' not in data:
-        return Response('Must provide correct collection!', 400)
-    elif 'query' not in data:
-        return Response('Must provide query!', 400)
-
-    pipeline_id = data['pipeline_id']
-    try:
-        pipeline = find_pipeline_by_id(pipeline_id)
-        collaborator_pipieline_ids = pipeline['collaborator_pipieline_ids']
-    except Exception:
-        return Response('pipeline not found', 404)
-
-    try:
-        async with aiohttp.ClientSession() as session:
-            res = await asyncio.gather(*[post(f'{col["address"]}/data/process', {**request.json, "pipeline_id": col['id']}, session) for col in collaborator_pipieline_ids])
-    except Exception:
-        return Response('Request a train failed!', 500)
-
-    WAITING_PIPELINE[pipeline_id] = collaborator_pipieline_ids
-    print("All collaborators have been noticed")
-    return jsonify(res_from_col=res)
-
-
 @app.route("/model/data", methods=["POST"])
 def receive_data():
     return 'ok'
@@ -106,6 +77,35 @@ async def get_pipeline(pipeline_id):
         return Response('Failed to get pipeline!', 400)
 
     return jsonify(pipeline)
+
+
+@app.route("/pipeline/fit", methods=["POST"])
+async def train_model():
+    data = request.json
+
+    if 'pipeline_id' not in data:
+        return Response('Must provide correct pipeline ID!', 400)
+    elif 'collection' not in data:
+        return Response('Must provide correct collection!', 400)
+    elif 'query' not in data:
+        return Response('Must provide query!', 400)
+
+    pipeline_id = data['pipeline_id']
+    try:
+        pipeline = find_pipeline_by_id(pipeline_id)
+        collaborator_pipieline_ids = pipeline['collaborator_pipieline_ids']
+    except Exception:
+        return Response('pipeline not found', 404)
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            res = await asyncio.gather(*[post(f'{col["address"]}/data/process', {**request.json, "pipeline_id": col['id']}, session) for col in collaborator_pipieline_ids])
+    except Exception:
+        return Response('Request a train failed!', 500)
+
+    WAITING_PIPELINE[pipeline_id] = collaborator_pipieline_ids
+    print("All collaborators have been noticed")
+    return jsonify(res_from_col=res)
 
 
 @app.route('/pipeline/merge', methods=['POST'])
