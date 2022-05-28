@@ -1,6 +1,7 @@
 
 import os
 import pickle
+from platform import node
 from random import choice, randrange
 import pandas as pd
 import networkx as nx
@@ -52,6 +53,9 @@ except:
 WHO = 'global-server'
 USER = "bobo"
 TAG = "default-tag"
+DATASET = "heart failure"
+DATASET_VERSION = 0
+EXP_NUM = 0
 
 def get_surrogate_number(path, prefix) -> str:
     same_files = []
@@ -67,15 +71,41 @@ def get_surrogate_number(path, prefix) -> str:
     
 
 
-def generate_file_path(path="", mode="", who="", user="", tag="") -> str:
+def generate_node_id(type="", who="", user="", tag="") -> str:
     date = current_date()
-    filepath = '_'.join([mode, who, user, tag, date])
-    version_num = "_" + get_surrogate_number(DATA_FOLDER, filepath)
-    filepath += version_num
-    filepath = os.path.join(path, filepath)
-    return filepath
+    node_id = '_'.join([type, who, user, tag, date])
+    version_num = "_" + get_surrogate_number(DATA_FOLDER, node_id)
+    node_id += version_num
+    return node_id
 
-def build_pipeline(dag, src_id, ops):
+def generate_node_filepath(folder, node_id, type):
+    if type == "model":
+        format = '.joblib'
+    if type == "data":
+        format = '.csv'
+
+    return os.path.join(folder, node_id + format)
+    
+def generate_node(who, user, dataset, dataset_version, experiment_number, tag, type, folder):
+    node_id = generate_node_id(type, who, user, tag)
+    node_filepath = generate_node_filepath(folder, node_id, type)
+    node_info = {
+                'who': who,
+                'user': user,
+                'date': current_date(),
+                'time': current_time(),
+                'dataset': dataset,
+                'dataset_version': dataset_version,
+                'experiment_number': experiment_number,
+                'tag': tag,
+                'type': type, # data or model
+                'filepath': node_filepath
+            }
+    
+    return node_id, node_info, node_filepath
+
+
+def build_pipeline(dag, src_id, ops, experiment_number=EXP_NUM, tag=TAG):
     def check_fitted(clf): 
         return hasattr(clf, "classes_")
     
@@ -88,24 +118,33 @@ def build_pipeline(dag, src_id, ops):
 
     # is model
     if check_fitted(pipe.steps[-1][1]):
+        
+        node_id, node_info, node_filepath = generate_node(
+            who=WHO, user=USER, dataset=DATASET, dataset_version=DATASET_VERSION, experiment_number=EXP_NUM, tag=TAG, type='model', folder=DATA_FOLDER)
+        
         print('is model')
-        filepath = generate_file_path(DATA_FOLDER, 'model', WHO, USER, TAG)
-        print(filepath)
-        save_model(filepath, pipe.steps[-1][1])
-        # dag.add_node()
+        print(node_filepath)
+        
+        save_model(node_filepath, pipe.steps[-1][1])
+        dag.add_node(node_id, **node_info)
         # dag.add_edge(src_id, node_id)
+
     # is data
     else:
+    
+        node_id, node_info, node_filepath = generate_node(
+            who=WHO, user=USER, dataset=DATASET, dataset_version=DATASET_VERSION, experiment_number=EXP_NUM, tag=TAG, type='data', folder=DATA_FOLDER)
+        
         print('is data')
-        filepath = generate_file_path(DATA_FOLDER, 'data', WHO, USER, TAG)
-        print(filepath)
+        print(node_filepath)
+        
         trans_data = pipe.fit_transform(X, y)
         tras_pd_data = pd.DataFrame(trans_data)
-        id = save_data(filepath, tras_pd_data)
-        # dag.add_node()
+        save_data(node_filepath, tras_pd_data)
+        dag.add_node(node_id, **node_info)
         # dag.add_edge(src_id, node_id)
 
-
+    return dag
 
 def save_data(filepath, trans_data):
     trans_data.to_csv(filepath + '.csv', index = False)
@@ -124,6 +163,10 @@ if __name__ == "__main__":
     # op_data = [('pca', PCA()), ('scaler', StandardScaler())]
     # dag = DAG(nx.MultiDiGraph())
     # build_pipeline(dag, 1, op_data)
+    op_data = [('pca', PCA()), ('scaler', StandardScaler())]
+    dag = DAG(nx.MultiDiGraph())
+    dag = build_pipeline(dag, 1, op_data)
+    print(dag.nodes_info)
 
     # op_model = [('pca', PCA()), ('scaler', StandardScaler()), ('svc', SVC())]
     raw_pipe = {
@@ -160,3 +203,5 @@ if __name__ == "__main__":
     # print(op_str)
     dag = DAG(nx.MultiDiGraph())
     build_pipeline(dag, 1, op_str[0])
+    # dag = build_pipeline(dag, 1, op_model)
+    # print(dag.nodes_info)

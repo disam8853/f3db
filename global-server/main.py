@@ -4,7 +4,6 @@ from pymongo import MongoClient
 from bson.objectid import ObjectId
 import aiohttp
 import asyncio
-import json
 
 env = Env()
 env.read_env()
@@ -68,9 +67,28 @@ async def create_pipeline():
         return Response('Request to create pipeline failed!' + str(e), 500)
     print("All collaborators have created pipeline")
 
+    pipeline = request.json
+    pipeline['collaborator_pipieline_ids'] = [
+        {**r, 'address': collaborators[idx]} for idx, r in enumerate(res)]
     try:
-        pipeline_id = pipelines_db.insert_one(request.json).inserted_id
+        pipeline_id = pipelines_db.insert_one(pipeline).inserted_id
     except Exception:
         return Response('Failed to insert into db!', 500)
 
     return jsonify({"id": str(pipeline_id), "collaborator": res})
+
+
+@app.route('/pipeline/<pipeline_id>', methods=['GET'])
+async def get_pipeline(pipeline_id):
+    try:
+        pipeline = pipelines_db.find_one(
+            {'_id': ObjectId(pipeline_id)}, {"_id": 0})
+    except Exception:
+        return Response('Failed to get pipeline!', 400)
+
+    return jsonify(pipeline)
+
+
+@app.route('/pipeline/merge', methods=['POST'])
+def merge_pipeline():
+    return 'ok'
