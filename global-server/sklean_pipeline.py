@@ -10,24 +10,60 @@ import numpy as np
 from random import randrange, choice
 from sklearn.neighbors import NearestNeighbors
 
+
 def basic_classification_pipeline():
     print("start")
-    X, y = make_classification(random_state=0)
-    X_train, X_test, y_train, y_test = train_test_split(X, y,
-                                                        random_state=0)
-    pipe = Pipeline([('pca', PCA()), ('scaler', StandardScaler()), ('svc', SVC())])
+    x, y = read_data(rid)
+    op = [('pca', PCA()), ('scaler', StandardScaler())]
+    pipe = Pipeline(op)
     # The pipeline can be used as any other estimator
     # and avoids leaking the test set into the train set
     pipe.fit(X_train, y_train)
-    pipe.score(X_test, y_test)
+    if op[-1] is model:
+        x = pipe.model_weight
+        id, path = save_model()
+    else:
+        x = pipe.transform_data
+        id, path = save_data()
+    
+    dag.add_node(id, path=path)
+    dag.add_edge(rid , id)
+
     print("\n***** dag result *****\n")
     print("show all roots: ", pipe.dag.roots)
     print("show all nodes: ", pipe.dag.nodes)
     print("show nodes_info: ", pipe.dag.nodes_info)
-    print("show number_of_edges: ", pipe.dag.number_of_edges)
     print("show number_of_nodes: ", pipe.dag.number_of_nodes)
+    print("show number_of_edges: ", pipe.dag.number_of_edges)
+    print("show edges: ", pipe.dag.get_node_edges(pipe.dag.get_topological_sort()))
     print("finish")
 
+class ReadData(BaseEstimator, TransformerMixin):
+    def __init__(self):
+        pass
+
+    #Return self nothing else to do here
+    def fit(self, X, y=None):
+        return self
+
+    #Method that describes what we need this transformer to do
+    def transform(self, X, y=None):
+        X, y = make_classification(random_state=0)
+        X_train, X_test, y_train, y_test = train_test_split(X, y,
+                                                            random_state=0)
+        return X
+
+class SaveData(BaseEstimator, TransformerMixin):
+    def __init__(self):
+        pass
+
+    #Return self nothing else to do here
+    def fit(self, X, y=None):
+        return self
+
+    #Method that describes what we need this transformer to do
+    def transform(self, X, y=None):
+        return X
 
 class FeatureSelector(BaseEstimator, TransformerMixin):
     def __init__(self, feature_map: dict=None,  feature_keys: list=None):

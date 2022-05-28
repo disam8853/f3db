@@ -68,6 +68,11 @@ class DAG():
             print(str(err))
             return False
     
+    def get_node_edges(self, index) -> list:
+        # index can be list of nodes indicies or one index 
+        return self.G.edges(index)
+
+
     def get_topological_sort(self) -> list:
         return list(nx.topological_sort(self.G))
 
