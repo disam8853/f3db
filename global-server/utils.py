@@ -2,6 +2,11 @@ import time
 
 def current_time():
     t = time.localtime()
-    current_time = time.strftime("%H:%M:%S", t)
-    return current_time
+    return time.strftime("%H:%M:%S", t)
+    
+
+
+def current_date():
+    t = time.localtime()
+    return time.strftime("%Y:%m:%d", t)
     
