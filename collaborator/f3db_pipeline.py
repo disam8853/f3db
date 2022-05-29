@@ -1,6 +1,4 @@
 
-from asyncio.windows_events import NULL
-from email import header
 import os
 import pickle
 from platform import node
@@ -22,9 +20,6 @@ from sklearn.utils.validation import check_is_fitted
 from dag import DAG
 from utils import current_date, current_time
 from joblib import dump, load
-
-from parse import parse
-
 """
 def psudocode():
 
@@ -70,7 +65,7 @@ def generate_collection_version(dataframe):
     return hash
 
 
-def build_data_node(dag, dataframe, collection="", collection_version="", experiment_number="", tag=""):
+def build_data_node(dag, dataframe, collection=""):
 
 
     node_id, node_info, node_filepath = generate_node(
@@ -81,7 +76,7 @@ def build_data_node(dag, dataframe, collection="", collection_version="", experi
     return dag
 
 
-def get_surrogate_number(path, prefix) -> str:
+def get_max_surrogate_number(path, prefix) -> int:
     same_files = []
     for file in os.listdir(path):
         if file.startswith(prefix):
@@ -90,14 +85,14 @@ def get_surrogate_number(path, prefix) -> str:
     version_nums = [ int(x.split("_")[-1].split(".")[0]) for x in same_files]
 
     if version_nums == []:
-        return str(0)
-    return str(max(version_nums) + 1)
+        return -1
+    return max(version_nums)
     
 
 def generate_node_id(type="", who="", user="", tag="") -> str:
     date = current_date()
     node_id = '_'.join([type, who, user, tag, date])
-    version_num = "_" + get_surrogate_number(DATA_FOLDER, node_id)
+    version_num = "_" + str(get_max_surrogate_number(DATA_FOLDER, node_id) + 1)
     node_id += version_num
     return node_id
 
@@ -128,19 +123,20 @@ def generate_node(who, user, collection, collection_version, experiment_number, 
     return node_id, node_info, node_filepath
 
 
-def build_pipeline(dag, src_id, ops, first_pipe, experiment_number=EXP_NUM, tag=TAG  ):
-    if(first_pipe is NULL):
-        X = np.array([[-1, -1], [-2, -1], [1, 1], [2, 1]])
-        y = np.array([1, 1, 2, 2])
-    else:
-        X = first_pipe[first_pipe.columns[0:-1]]
-        y  = first_pipe[first_pipe.columns[-1]]
-   
-        
+def build_pipeline(dag, src_id, ops, experiment_number=EXP_NUM, tag=TAG):
+    def check_fitted(clf): 
+        return hasattr(clf, "classes_")
+    
+    # read data
+    X, y = make_classification(random_state=0)
+
     pipe = Pipeline(ops)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=0)
+    pipe.fit(X_train, y_train)
+
     # is model
-    if (ops[-1][0] == 'model'):
-        print('is model')
+    if check_fitted(pipe.steps[-1][1]):
+        
         node_id, node_info, node_filepath = generate_node(
             who=WHO, user=USER, collection=COLLECTION, collection_version=COLLECTION_VERSION, experiment_number=EXP_NUM, tag=TAG, type='model', folder=DATA_FOLDER)
         
@@ -150,7 +146,7 @@ def build_pipeline(dag, src_id, ops, first_pipe, experiment_number=EXP_NUM, tag=
         save_model(node_filepath, pipe.steps[-1][1])
         dag.add_node(node_id, **node_info)
         # dag.add_edge(src_id, node_id)
-        return final_data
+
     # is data
     else:
     
@@ -160,16 +156,13 @@ def build_pipeline(dag, src_id, ops, first_pipe, experiment_number=EXP_NUM, tag=
         print('is data')
         print(node_filepath)
         
-        trans_data = pipe.fit_transform(X,y)
-        trans_pd_data = pd.DataFrame(trans_data)
-        y = pd.DataFrame(y)
-        final_data = pd.concat([trans_pd_data,y],axis=1)
-        final_data.columns = [np.arange(0,final_data.shape[1])]
-        save_data(node_filepath, final_data)
+        trans_data = pipe.fit_transform(X, y)
+        tras_pd_data = pd.DataFrame(trans_data)
+        save_data(node_filepath, tras_pd_data)
         dag.add_node(node_id, **node_info)
         # dag.add_edge(src_id, node_id)
-        # print('EWW',final_data)
-        return final_data
+
+    return dag
 
 def save_data(filepath, trans_data):
     trans_data.to_csv(filepath, index = False)
@@ -185,64 +178,12 @@ def read_model():
 
 
 if __name__ == "__main__":
-    # op_data = [('pca', PCA()), ('scaler', StandardScaler())]
-    # dag = DAG(nx.MultiDiGraph())
-    # build_pipeline(dag, 1, op_data)
-    # op_data = [('pca', PCA()), ('scaler', StandardScaler())]
-    # dag = DAG(nx.MultiDiGraph())
-    # dag = build_pipeline(dag, 1, op_data)
-    # print(dag.nodes_info)
-
-    # op_model = [('pca', PCA()), ('scaler', StandardScaler()), ('svc', SVC())]
-    raw_pipe = {
-    "collaborator": [
-        {
-            "name": "StandardScaler",
-            "parameter": []
-        },
-        {
-            "name": "SaveData",
-            "parameter": []
-        },
-        {
-            "name": "StandardScaler",
-            "parameter": []
-        }
-    ],
-    "global-server": [
-        {
-            "name": "StandardScaler",
-            "parameter": []
-        },
-
-        {
-            "name": "PCA",
-            "parameter": []
-        },
-
-        {
-            "name": "SaveData",
-            "parameter": []
-        },
-        {
-            "name": "StandardScaler",
-            "parameter": []
-        },
-        {
-            "name": "SVC",
-            "parameter": []
-        }
-    ]
-}
-    main_pipeline = parse(raw_pipe, 'global-server')
+    op_data = [('pca', PCA()), ('scaler', StandardScaler())]
     dag = DAG(nx.MultiDiGraph())
-    first_pipe = NULL
-    for sub_pipeline in main_pipeline:
-        print('--------------------',sub_pipeline,'--------------------')
-        if(main_pipeline.index(sub_pipeline) == 0):
-            first_pipe = build_pipeline(dag,1,sub_pipeline, first_pipe=first_pipe)
-        else:
-            first_pipe = build_pipeline(dag,1,sub_pipeline, first_pipe=first_pipe)
-    # build_pipeline(dag, 1, op_str[0])
-        
-    # print(dag.nodes_info)
+    dag = build_pipeline(dag, 1, op_data)
+    print(dag.nodes_info)
+
+    op_model = [('pca', PCA()), ('scaler', StandardScaler()), ('svc', SVC())]
+    dag = DAG(nx.MultiDiGraph())
+    dag = build_pipeline(dag, 1, op_model)
+    print(dag.nodes_info)

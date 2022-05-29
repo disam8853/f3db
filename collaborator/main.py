@@ -8,11 +8,14 @@ from utils import pickle_encode
 import pandas as pd
 from multiprocessing import Process
 from pymongo import MongoClient
-
+import networkx as nx
+from dag import DAG
 app = Flask(__name__)
 
 env = Env()
 env.read_env()
+
+dag = DAG(nx.MultiDiGraph())
 
 db_client = MongoClient(env("MONGODB_URL"))
 pipelines_db = db_client['f3db'].pipelines
@@ -77,9 +80,10 @@ def process_data():
     except Exception as e:
         return make_response(jsonify(error='pipeline not found'), 404)
 
+    # compare 
     heavy_process = Process(  # Create a daemonic process with heavy "my_func"
         target=long_data_transform,
-        args=(df, pipeline,),
+        args=(dag, df, collection, pipeline_id, pipeline, 'collaborator'),
         daemon=True
     )
     heavy_process.start()

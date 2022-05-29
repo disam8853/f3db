@@ -1,11 +1,5 @@
-# TODO: union collaborator and global dag
-# TODO: maintain consistency between global & local dag
-
-
 import networkx as nx
 from utils import current_time, current_date
-from functools import singledispatch, update_wrapper
-
 
 class DAG():
     def dag_refresh(func):
@@ -19,14 +13,6 @@ class DAG():
             self.number_of_nodes = nx.number_of_nodes(self.G)
             self.type = type(self.G)
             return output
-        return wrapper
-
-    def methdispatch(func):
-        dispatcher = singledispatch(func)
-        def wrapper(*args, **kw):
-            return dispatcher.dispatch(args[1].__class__)(*args, **kw)
-        wrapper.register = dispatcher.register
-        update_wrapper(wrapper, func)
         return wrapper
 
     @dag_refresh
@@ -102,20 +88,6 @@ class DAG():
             print(str(err))
             return False
     
-    @methdispatch
-    @dag_refresh
-    def dag_compose(self, other_dag) -> bool:
-        C = nx.compose(self.G, other_dag)
-        self.G = C
-
-    @dag_compose.register(list)
-    @dag_refresh
-    def _(self, other_dags: list) -> bool:
-        all_dag = [self.G] + other_dags
-        C = nx.compose_all(all_dag)
-        self.G = C
-
-
     def get_node_edges(self, index) -> list:
         # index can be list of nodes indicies or one index 
         return self.G.edges(index)
@@ -147,6 +119,12 @@ class DAG():
 
     def save_graph(self, filepath) -> None:
         nx.write_gml(self.G, filepath)
+
+#TODO: implement stage dag
+class STAGE(DAG):
+    def __init__(self):
+        self.G = nx.DiGraph()
+
 
 
 if __name__ == "__main__":
@@ -186,21 +164,4 @@ if __name__ == "__main__":
     print("add edge: ", dag.add_edge("bobo6", "bobo7"))
     print("freeze graph: ", dag.unfreeze_graph())
     print("check graph is freeze: ", nx.is_frozen(dag.G))
-
-    print("\n**** dag compose ****")
-    G1 = DAG(nx.MultiDiGraph())
-    G1.add_edge(1, 2)
-    G1.add_edge(1, 3)
-    G1.add_edge(5, 6)
-
-    G2 = DAG(nx.MultiDiGraph())
-    G2.add_edge(0, 1)
-
-    G1.dag_compose(G2.G)
-    print("show G1, G2 nodes: ", G1.nodes)
-
-    G3 = DAG(nx.MultiDiGraph())
-    G3.add_edge(10, 11)
-    G1.dag_compose([G2.G, G3.G])
-    print("show G1, G2, G3 nodes: ", G1.nodes)
-            
+        

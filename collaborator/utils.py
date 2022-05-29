@@ -11,3 +11,14 @@ def pickle_decode(s) -> pd.DataFrame:
     p = pickle.loads(base64.b64decode(s.encode()))
     df = pd.DataFrame(p)
     return df
+
+import time
+def current_time():
+    t = time.localtime()
+    return time.strftime("%H:%M:%S", t)
+    
+
+def current_date():
+    t = time.localtime()
+    return time.strftime("%Y-%m-%d", t)
+    
