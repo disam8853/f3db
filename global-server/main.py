@@ -106,9 +106,9 @@ async def train_model():
 @app.route('/pipeline/merge', methods=['POST'])
 def merge_pipeline():
     data = request.json
-    df = data['df']
+    df = data['dataframe']
 
-    for attr in ['pipeline_id', 'df', 'dag']:
+    for attr in ['pipeline_id', 'dataframe', 'dag_json']:
         if attr not in data:
             return Response(f'Must provide correct {attr}!', 400)
 
