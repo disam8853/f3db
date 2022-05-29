@@ -16,17 +16,15 @@
     "global-server": [
 
         {
-            "name": "PCA",
+            "name": "StandardScaler",
             "parameter": []
         },
-        {
-            "name": "SaveData",
-            "parameter": []
-        },
+
         {
             "name": "PCA",
             "parameter": []
         },
+
         {
             "name": "train_test_split",
             "parameter": []

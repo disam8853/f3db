@@ -1,4 +1,6 @@
 
+from asyncio.windows_events import NULL
+from email import header
 import os
 import pickle
 from platform import node
@@ -105,30 +107,27 @@ def generate_node(who, user, dataset, dataset_version, experiment_number, tag, t
     return node_id, node_info, node_filepath
 
 
-def build_pipeline(dag, src_id, ops, experiment_number=EXP_NUM, tag=TAG):
-    def check_fitted(clf): 
-        return hasattr(clf, "classes_")
-    
-    # read data
-    X, y = make_classification(random_state=0)
-
-    pipe = Pipeline(ops)
-    X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=0)
-    pipe.fit(X_train, y_train)
-
-    # is model
-    if check_fitted(pipe.steps[-1][1]):
+def build_pipeline(dag, src_id, ops, first_pipe, experiment_number=EXP_NUM, tag=TAG  ):
+    if(first_pipe is NULL):
+        X = np.array([[-1, -1], [-2, -1], [1, 1], [2, 1]])
+        y = np.array([1, 1, 2, 2])
+    else:
+        X = first_pipe[first_pipe.columns[0:-1]]
+        y  = first_pipe[first_pipe.columns[-1]]
+   
         
+    pipe = Pipeline(ops)
+    # is model
+    if (ops[-1][0] == 'model'):
+        print('is model')
         node_id, node_info, node_filepath = generate_node(
             who=WHO, user=USER, dataset=DATASET, dataset_version=DATASET_VERSION, experiment_number=EXP_NUM, tag=TAG, type='model', folder=DATA_FOLDER)
-        
-        print('is model')
         print(node_filepath)
         
         save_model(node_filepath, pipe.steps[-1][1])
         dag.add_node(node_id, **node_info)
         # dag.add_edge(src_id, node_id)
-
+        return final_data
     # is data
     else:
     
@@ -138,13 +137,16 @@ def build_pipeline(dag, src_id, ops, experiment_number=EXP_NUM, tag=TAG):
         print('is data')
         print(node_filepath)
         
-        trans_data = pipe.fit_transform(X, y)
-        tras_pd_data = pd.DataFrame(trans_data)
-        save_data(node_filepath, tras_pd_data)
+        trans_data = pipe.fit_transform(X,y)
+        trans_pd_data = pd.DataFrame(trans_data)
+        y = pd.DataFrame(y)
+        final_data = pd.concat([trans_pd_data,y],axis=1)
+        final_data.columns = [np.arange(0,final_data.shape[1])]
+        save_data(node_filepath, final_data)
         dag.add_node(node_id, **node_info)
         # dag.add_edge(src_id, node_id)
-
-    return dag
+        # print('EWW',final_data)
+        return final_data
 
 def save_data(filepath, trans_data):
     trans_data.to_csv(filepath + '.csv', index = False)
@@ -163,10 +165,10 @@ if __name__ == "__main__":
     # op_data = [('pca', PCA()), ('scaler', StandardScaler())]
     # dag = DAG(nx.MultiDiGraph())
     # build_pipeline(dag, 1, op_data)
-    op_data = [('pca', PCA()), ('scaler', StandardScaler())]
-    dag = DAG(nx.MultiDiGraph())
-    dag = build_pipeline(dag, 1, op_data)
-    print(dag.nodes_info)
+    # op_data = [('pca', PCA()), ('scaler', StandardScaler())]
+    # dag = DAG(nx.MultiDiGraph())
+    # dag = build_pipeline(dag, 1, op_data)
+    # print(dag.nodes_info)
 
     # op_model = [('pca', PCA()), ('scaler', StandardScaler()), ('svc', SVC())]
     raw_pipe = {
@@ -189,8 +191,18 @@ if __name__ == "__main__":
             "name": "StandardScaler",
             "parameter": []
         },
+
         {
             "name": "PCA",
+            "parameter": []
+        },
+
+        {
+            "name": "SaveData",
+            "parameter": []
+        },
+        {
+            "name": "StandardScaler",
             "parameter": []
         },
         {
@@ -199,9 +211,15 @@ if __name__ == "__main__":
         }
     ]
 }
-    op_str = parse(raw_pipe, 'global-server')
-    # print(op_str)
+    main_pipeline = parse(raw_pipe, 'global-server')
     dag = DAG(nx.MultiDiGraph())
-    build_pipeline(dag, 1, op_str[0])
-    # dag = build_pipeline(dag, 1, op_model)
+    first_pipe = NULL
+    for sub_pipeline in main_pipeline:
+        print('--------------------',sub_pipeline,'--------------------')
+        if(main_pipeline.index(sub_pipeline) == 0):
+            first_pipe = build_pipeline(dag,1,sub_pipeline, first_pipe=first_pipe)
+        else:
+            first_pipe = build_pipeline(dag,1,sub_pipeline, first_pipe=first_pipe)
+    # build_pipeline(dag, 1, op_str[0])
+        
     # print(dag.nodes_info)
