@@ -23,7 +23,7 @@ from dag import DAG
 from utils import current_date, current_time
 from joblib import dump, load
 
-from parse import parse
+from parse import parse, parse_param
 
 """
 def psudocode():
@@ -128,7 +128,7 @@ def generate_node(who, user, collection, collection_version, experiment_number, 
     return node_id, node_info, node_filepath
 
 
-def build_pipeline(dag, src_id, ops, first_pipe, experiment_number=EXP_NUM, tag=TAG  ):
+def build_pipeline(dag, src_id, ops, first_pipe, param_list, experiment_number=EXP_NUM, tag=TAG  ):
     if(first_pipe is NULL):
         X = np.array([[-1, -1], [-2, -1], [1, 1], [2, 1]])
         y = np.array([1, 1, 2, 2])
@@ -136,19 +136,20 @@ def build_pipeline(dag, src_id, ops, first_pipe, experiment_number=EXP_NUM, tag=
         X = first_pipe[first_pipe.columns[0:-1]]
         y  = first_pipe[first_pipe.columns[-1]]
    
-        
+    pipe_string = parse_pipe_to_string(ops)
+    
     pipe = Pipeline(ops)
     # is model
     if (ops[-1][0] == 'model'):
         print('is model')
         node_id, node_info, node_filepath = generate_node(
             who=WHO, user=USER, collection=COLLECTION, collection_version=COLLECTION_VERSION, experiment_number=EXP_NUM, tag=TAG, type='model', folder=DATA_FOLDER)
+        pipe.set_params(**param_list)
+        print('model',pipe.get_params())
         
-        print('is model')
-        print(node_filepath)
-        
-        save_model(node_filepath, pipe.steps[-1][1])
+        save_model(node_filepath, pipe.steps[-1][1].fit(X,y))
         dag.add_node(node_id, **node_info)
+        # final_data = 
         # dag.add_edge(src_id, node_id)
         return final_data
     # is data
@@ -158,8 +159,9 @@ def build_pipeline(dag, src_id, ops, first_pipe, experiment_number=EXP_NUM, tag=
             who=WHO, user=USER, collection=COLLECTION, collection_version=COLLECTION_VERSION, experiment_number=EXP_NUM, tag=TAG, type='data', folder=DATA_FOLDER)
         
         print('is data')
-        print(node_filepath)
-        
+        # print(node_filepath)
+        pipe.set_params(**param_list)
+        print(pipe.get_params())
         trans_data = pipe.fit_transform(X,y)
         trans_pd_data = pd.DataFrame(trans_data)
         y = pd.DataFrame(y)
@@ -181,8 +183,18 @@ def save_model(filepath, clf):
 
 def read_model():
     clf = load('DATA_FOLDER/model_global-server_bobo_default-tag_2022-05-28_0.joblib')
-    print(clf.classes_)
+    # print(clf.classes_)
 
+def parse_pipe_to_string(ops):
+    op_str = ""
+    for step in ops:
+        item = str(step[1])
+        if(ops.index(step) == 0):
+            op_str += item
+        else:
+            op_str += str(',') + item
+    # print(op_str)
+    return op_str
 
 if __name__ == "__main__":
     # op_data = [('pca', PCA()), ('scaler', StandardScaler())]
@@ -217,9 +229,13 @@ if __name__ == "__main__":
 
         {
             "name": "PCA",
-            "parameter": []
-        },
+            "parameter": [
+                {
 
+                    "random_state":42
+                }   
+            ]
+        },
         {
             "name": "SaveData",
             "parameter": []
@@ -230,19 +246,41 @@ if __name__ == "__main__":
         },
         {
             "name": "SVC",
-            "parameter": []
+            "parameter": [
+                {
+                    "kernel":"linear",
+                    "gamma":"auto" ,
+                    "random_state":42
+                }   
+            ]   
         }
     ]
 }
     main_pipeline = parse(raw_pipe, 'global-server')
+    # print(main_pipeline)
     dag = DAG(nx.MultiDiGraph())
     first_pipe = NULL
+    pipe_param_string = parse_param(raw_pipe,'global-server')
+    # print(pipe_param_string)
     for sub_pipeline in main_pipeline:
+        sub_pipeline_param_list = pipe_param_string[main_pipeline.index(sub_pipeline)]
+
         print('--------------------',sub_pipeline,'--------------------')
+        print('xxxxxxxxxxxxxxxxxxxx',sub_pipeline_param_list,'xxxxxxxxxxxxxxxxxxxx')
         if(main_pipeline.index(sub_pipeline) == 0):
-            first_pipe = build_pipeline(dag,1,sub_pipeline, first_pipe=first_pipe)
+            first_pipe = build_pipeline(dag,1,sub_pipeline, first_pipe=first_pipe,param_list = sub_pipeline_param_list)
         else:
-            first_pipe = build_pipeline(dag,1,sub_pipeline, first_pipe=first_pipe)
+            if(sub_pipeline == 'train_test_split'):
+                X = first_pipe[first_pipe.columns[0:-1]]
+                y  = first_pipe[first_pipe.columns[-1]]
+                X_train,X_test,y_trian,y_test = train_test_split(X,y, test_size=0.2, random_state=42)
+                
+                X_train = pd.DataFrame(X_train)
+                X_test = pd.DataFrame(X_test)
+                first_pipe = pd.concat([X_train,X_test],axis =0)
+                # print('tttt', first_pipe)
+            else:
+                first_pipe = build_pipeline(dag,1,sub_pipeline, first_pipe=first_pipe,param_list = sub_pipeline_param_list)
     # build_pipeline(dag, 1, op_str[0])
         
     # print(dag.nodes_info)
