@@ -130,7 +130,7 @@ def process_data():
         daemon=True
     )
     heavy_process.start()
-    heavy_process.join()
+    # heavy_process.join()
 
     return jsonify(
         response='ack'

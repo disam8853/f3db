@@ -19,6 +19,7 @@ def basic_data_transform(df:pd.DataFrame) -> pd.DataFrame:
     return df
 
 def long_data_transform(lock, dag:DAG, df:pd.DataFrame, collection_name:str, pipeline_id:str, pipeline:dict) -> pd.DataFrame:
+    lock.acquire()
     """
     get all data node, compare collection_name
 
@@ -64,7 +65,7 @@ def long_data_transform(lock, dag:DAG, df:pd.DataFrame, collection_name:str, pip
     print(dag.nodes)
     print(dag.roots)
     import time
-    for i in range(5):
+    for i in range(3):
         print(i)
         time.sleep(1)
     # send pipeline_id, json dag, dataframe to global-server
@@ -79,5 +80,5 @@ def long_data_transform(lock, dag:DAG, df:pd.DataFrame, collection_name:str, pip
     
     r = requests.post(url, headers=headers, data=json.dumps(data))
     print("response: ", r.text)
-
+    lock.release()
     return 
