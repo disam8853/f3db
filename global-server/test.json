@@ -14,7 +14,6 @@
         }
     ],
     "global-server": [
-
         {
             "name": "StandardScaler",
             "parameter": []
@@ -22,20 +21,40 @@
 
         {
             "name": "PCA",
-            "parameter": []
-        },
+            "parameter": [
 
+            ]
+        },
         {
-            "name": "train_test_split",
+            "name": "SaveData",
             "parameter": []
         },
         {
             "name": "StandardScaler",
+            "parameter": [{
+                "random_state":42
+            }]
+        },
+        {
+            "name": "SaveData",
             "parameter": []
         },
         {
+            "name": "StandardScaler",
+            "parameter": [{
+                "random_state":42
+            }]
+        },
+        {
             "name": "SVC",
-            "parameter": []
+            "parameter": [
+                {
+                    
+                    "kernel":"linear",
+                    "gamma":"auto" ,
+                    "random_state":42
+                }   
+            ]   
         }
     ]
 }
