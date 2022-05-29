@@ -1,4 +1,4 @@
-from crypt import methods
+
 from bson import ObjectId
 from flask import Flask, request, abort, jsonify, Response, make_response
 from db_reader import read_mongo_by_query, read_mongo_collection, write_mongo_collection
@@ -7,15 +7,20 @@ from environs import Env
 from utils import pickle_encode
 import pandas as pd
 from multiprocessing import Process
+from threading import Thread, Lock
 from pymongo import MongoClient
 import networkx as nx
 from dag import DAG
+from networkx.readwrite import json_graph
+import json
+import numpy as np
 app = Flask(__name__)
 
 env = Env()
 env.read_env()
+lock = Lock()
 
-dag = DAG(nx.MultiDiGraph())
+dag = DAG("./DATA_FOLDER/graph.gml.gz")
 
 db_client = MongoClient(env("MONGODB_URL"))
 pipelines_db = db_client['f3db'].pipelines
@@ -24,6 +29,34 @@ pipelines_db = db_client['f3db'].pipelines
 @app.route("/", methods=['GET'])
 def get():
     return 'OK'
+
+@app.route("/dag", methods=['GET'])
+def get_dag():
+    class NpEncoder(json.JSONEncoder):
+        def default(self, obj):
+            if isinstance(obj, np.integer):
+                return int(obj)
+            if isinstance(obj, np.floating):
+                return float(obj)
+            if isinstance(obj, np.ndarray):
+                return obj.tolist()
+            return super(NpEncoder, self).default(obj)
+
+
+    data1 = json_graph.node_link_data(dag.G)
+    print(data1)
+    s1 = json.dumps(data1, cls=NpEncoder)
+
+    return s1
+
+@app.route("/dag", methods=['POST'])
+def create_dag():
+    data = request.json
+    new_dag = DAG(data)
+    new_dag.add_edge('1','2')
+
+    data = new_dag.get_json_graph()
+    return data
 
 
 @app.route("/basic_write", methods=['POST'])
@@ -80,13 +113,22 @@ def process_data():
     except Exception as e:
         return make_response(jsonify(error='pipeline not found'), 404)
 
-    # compare 
-    heavy_process = Process(  # Create a daemonic process with heavy "my_func"
-        target=long_data_transform,
-        args=(dag, df, collection, pipeline_id, pipeline, 'collaborator'),
+    # df = pd.DataFrame([[1,2],[3,4]])
+    # long proces
+    # heavy_process = Process(  # Create a daemonic process with heavy "my_func"
+    #     target=long_data_transform,
+    #     args=(dag, df, collection, pipeline_id, pipeline),
+    #     daemon=True
+    # )
+
+    heavy_process = Thread(
+        target=long_data_transform, 
+        args=(lock, dag, df, collection, pipeline_id, pipeline),
         daemon=True
     )
     heavy_process.start()
+    heavy_process.join()
+
     return jsonify(
         response='ack'
     )

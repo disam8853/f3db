@@ -28,6 +28,7 @@ services:
       - ./volumn/collaborator1/DATA_FOLDER:/app/DATA_FOLDER
     environment:
       - MONGODB_URL=mongodb://mongo1:27017/f3db
+      - GLOBAL_SERVER_URL=http://global-server:8000
       - FLASK_APP=main.py
       - FLASK_ENV=development
       - FLASK_RUN_PORT=8000
@@ -45,6 +46,7 @@ services:
       - ./volumn/collaborator2/DATA_FOLDER:/app/DATA_FOLDER
     environment:
       - MONGODB_URL=mongodb://mongo2:27017/f3db
+      - GLOBAL_SERVER_URL=http://global-server:8000
       - FLASK_APP=main.py
       - FLASK_ENV=development
       - FLASK_RUN_PORT=8000
