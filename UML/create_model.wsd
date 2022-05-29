@@ -41,7 +41,7 @@ return training data
 col_subprocess -> col_subprocess: execute Collaborator pipeline
 col_subprocess -> db_col++: save intermediate data to Col DB\nas a DAG
 return ok
-col_subprocess --> gs: intermediate data and pipeline ID and DAG
+col_subprocess --> gs: `POST /pipeline/merge`\nintermediate data and pipeline ID and DAG
 col_subprocess -> col_subprocess !!: close subprocess
 end
 

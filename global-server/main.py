@@ -41,11 +41,6 @@ async def post(url, data, session):
         print(f"Unable to get url {url} due to {e.__class__}.")
         raise e
 
-
-@app.route("/model/data", methods=["POST"])
-def receive_data():
-    return 'ok'
-
 ############ Pipeline ############
 
 
