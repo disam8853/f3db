@@ -6,6 +6,7 @@ from dag import DAG
 import requests
 import json
 from environs import Env
+from parse import parse
 
 env = Env()
 env.read_env()
@@ -17,8 +18,7 @@ def basic_data_transform(df:pd.DataFrame) -> pd.DataFrame:
 
     return df
 
-def long_data_transform(lock, dag:DAG, df:pd.DataFrame, collection_name:str, pipeline_id:str, pipeline:list) -> pd.DataFrame:
-    lock.acquire()
+def long_data_transform(lock, dag:DAG, df:pd.DataFrame, collection_name:str, pipeline_id:str, pipeline:dict) -> pd.DataFrame:
     """
     get all data node, compare collection_name
 
@@ -63,8 +63,10 @@ def long_data_transform(lock, dag:DAG, df:pd.DataFrame, collection_name:str, pip
 
     print(dag.nodes)
     print(dag.roots)
-    
-
+    import time
+    for i in range(5):
+        print(i)
+        time.sleep(1)
     # send pipeline_id, json dag, dataframe to global-server
     url = f'{GLOBAL_SERVER_URL}/pipeline/merge'
     headers = {'Content-type': 'application/json', 'Accept': 'text/plain'}
@@ -74,8 +76,8 @@ def long_data_transform(lock, dag:DAG, df:pd.DataFrame, collection_name:str, pip
         "dataframe": pickle_encode(df)
     }
 
+    
     r = requests.post(url, headers=headers, data=json.dumps(data))
-    print("response: ", r)
+    print("response: ", r.text)
 
-    lock.release()
     return 

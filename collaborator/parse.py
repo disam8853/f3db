@@ -19,11 +19,11 @@ def check_fitted(clf):
     return hasattr(clf, "predict")
 def parse(raw_pipe_data, character):
     final_pipeline = []
+    param_pipeline = []
     sub_pipeline = []
     pipe = raw_pipe_data[character]
     for idx in range(len(pipe)):
         # print(pipe[idx])
-        # if(pipe[idx]['name'] != 'SaveData' and pipe[idx]['name'] != 'train_test_split'):
         if(pipe[idx]['name'] != 'SaveData'):
             strp = pipe[idx]['name']+'()'
             if check_fitted(eval(strp)):
@@ -42,10 +42,48 @@ def parse(raw_pipe_data, character):
     final_pipeline.append(sub_pipeline)
     return final_pipeline
 
+def parse_param(raw_pipe_data, character):
+    final_pipeline_param = []
+    param_pipeline = {}
+    # sub_pipeline = []
+    pipe = raw_pipe_data[character]
+    for idx in range(len(pipe)):
+        # print('yeeeeeeeeeeeeeeeeeeeeee',pipe[idx])
+        if(pipe[idx]['name'] != 'SaveData' and pipe[idx]['parameter']):
             
+            # for param in pipe[idx]['parameter'][0]:
+            #     newkey = pipe[idx]['name']+'__'+ param
+            #     param_pipeline[newkey] = pipe[idx]['parameter'][0][param]
+
+
+            strp = pipe[idx]['name']+'()'
+            if check_fitted(eval(strp)):
+                for param in pipe[idx]['parameter'][0]:
+                    newkey = 'model__'+ param
+                    param_pipeline[newkey] = pipe[idx]['parameter'][0][param]
+            else:
+                for param in pipe[idx]['parameter'][0]:
+                    newkey = pipe[idx]['name']+'__'+ param
+                    param_pipeline[newkey] = pipe[idx]['parameter'][0][param]
+
+        elif(pipe[idx]['name'] != 'SaveData' and not pipe[idx]['parameter']):
+            # print('NOT', pipe[idx]['name'])
+            continue
+        else:
+            final_pipeline_param.append(param_pipeline)
+            param_pipeline = {}
+            continue
+
+    # print(final)
+    final_pipeline_param.append(param_pipeline)
+    return final_pipeline_param
+       
     
 if __name__ == "__main__":
 
     raw_pipe_data = read_raw_pipe()
-    final = parse(raw_pipe_data, 'global-server')
-    print(final)
+    final_pipeline = parse(raw_pipe_data, 'global-server')
+    print(final_pipeline)
+
+    final_pipeline_param = parse_param(raw_pipe_data, 'global-server')
+    print(final_pipeline_param)

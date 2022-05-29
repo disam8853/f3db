@@ -109,10 +109,10 @@ def process_data():
     try:
         pipeline = pipelines_db.find_one(
             {'_id': ObjectId(pipeline_id)}, {"_id": 0})
-        pipeline = pipeline['collaborator']
+        # pipeline = pipeline['collaborator']
     except Exception as e:
         return make_response(jsonify(error='pipeline not found'), 404)
-
+    
     # df = pd.DataFrame([[1,2],[3,4]])
     # long proces
     # heavy_process = Process(  # Create a daemonic process with heavy "my_func"
@@ -120,6 +120,9 @@ def process_data():
     #     args=(dag, df, collection, pipeline_id, pipeline),
     #     daemon=True
     # )
+
+    import time
+
 
     heavy_process = Thread(
         target=long_data_transform, 
