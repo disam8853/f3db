@@ -1,12 +1,14 @@
-
+from asyncio.windows_events import NULL
 from utils import pickle_encode
 import pandas as pd
-from f3db_pipeline import build_child_data_node, get_max_surrogate_number, generate_collection_version, compare_collection_version, build_root_data_node
+from f3db_pipeline import build_child_data_node, get_max_surrogate_number, generate_collection_version, compare_collection_version, build_root_data_node, build_pipeline
 from dag import DAG
 import requests
 import json
 from environs import Env
-from parse import parse
+from parse import parse, parse_param
+from sklearn.model_selection import train_test_split
+
 
 env = Env()
 env.read_env()
@@ -55,10 +57,30 @@ def long_data_transform(lock, dag:DAG, df:pd.DataFrame, collection_name:str, pip
         
 
     # parse: pipeline dict to real pipline (chung)
-    
+    parsed_pipeline = parse(pipeline)
 
     # do pipeline (chung)
+    first_pipe = NULL
+    pipe_param_string = parse_param(pipeline,'global-server')
+    # print(pipe_param_string)
+    for sub_pipeline in parsed_pipeline:
+        sub_pipeline_param_list = pipe_param_string[parsed_pipeline.index(sub_pipeline)]
 
+       
+        if(parsed_pipeline.index(sub_pipeline) == 0):
+            first_pipe = build_pipeline(dag,1,sub_pipeline, first_pipe=first_pipe,param_list = sub_pipeline_param_list)
+        else:
+            if(sub_pipeline == 'train_test_split'):
+                X = first_pipe[first_pipe.columns[0:-1]]
+                y  = first_pipe[first_pipe.columns[-1]]
+                X_train,X_test,y_trian,y_test = train_test_split(X,y, test_size=0.2, random_state=42)
+                
+                X_train = pd.DataFrame(X_train)
+                X_test = pd.DataFrame(X_test)
+                first_pipe = pd.concat([X_train,X_test],axis =0)
+                # print('tttt', first_pipe)
+            else:
+                first_pipe = build_pipeline(dag,1,sub_pipeline, first_pipe=first_pipe,param_list = sub_pipeline_param_list)
 
 
     print(dag.nodes)
