@@ -4,6 +4,8 @@ container/dataMongo
 dev-container/volumn/**/mongodb
 dev-container/dataMongo
 
+.DS_Store
+
 graph.ipynb
 test.gml.gz
 

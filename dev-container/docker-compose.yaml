@@ -1,6 +1,7 @@
 version: "3.9"
 services:
   global-server:
+    container_name: global-server
     build: ../global-server
     ports:
       - 20000:8000
@@ -16,6 +17,7 @@ services:
       - USER=admin
       - COLLABORATORS_URL=http://collaborator1:8000,http://collaborator2:8000
   collaborator1:
+    container_name: collaborator1
     build: ../collaborator
     ports:
       - 20001:8000
@@ -30,6 +32,7 @@ services:
       - WHO=collaborator1
       - USER=admin
   collaborator2:
+    container_name: collaborator2
     build: ../collaborator
     ports:
       - 20002:8000
@@ -70,3 +73,11 @@ services:
     restart: always
     environment:
       - MONGO_INITDB_DATABASE=f3db
+  mongo-seed:
+    image: mongo
+    volumes:
+      - ./seed-data:/seed-data
+    command: mongoimport -h mongo1,mongo2 --db f3db -c test --type csv --mode upsert --headerline --file /seed-data/pressures.csv
+    depends_on:
+      - mongo1
+      - mongo2
