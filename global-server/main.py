@@ -23,7 +23,6 @@ def get():
     return 'OK'
 
 
-############# model #################
 async def post(url, data, session):
     try:
         async with session.post(url=url, json=data) as response:
@@ -105,7 +104,18 @@ async def train_model():
 
 @app.route('/pipeline/merge', methods=['POST'])
 def merge_pipeline():
-    return 'ok'
+    data = request.json
+
+    if 'pipeline_id' not in data:
+        return Response('Must provide correct pipeline ID!', 400)
+    col_piipeline_id = data['pipeline_id']
+    try:
+        col_pipeline = pipelines_db.find_one(
+            {"collaborator_pipieline_ids.id": col_piipeline_id}, {"_id": 0})
+    except Exception:
+        return Response('Failed to get pipeline!', 400)
+
+    return jsonify(col_pipeline)
 
 
 def find_pipeline_by_id(pipeline_id):
