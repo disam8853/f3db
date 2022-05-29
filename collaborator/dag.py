@@ -1,8 +1,6 @@
 from __future__ import annotations
-# TODO: compose collaborator and global dag
 # TODO: maintain consistency between global & local dag
 # TODO: compare two dag is same or not
-
 
 import networkx as nx
 from networkx.readwrite import json_graph

@@ -50,8 +50,20 @@ return Global Server pipeline
 gs -> gs: merge DAG and intermediate data
 gs -> gs: execute Global Server pipeline
 gs -> gs: fit final estimator
-gs -> db_gs++: save intermediate data and model\nto GS DB
+gs -> db_gs++: save intermediate data and model\nto DAG
 return
+
+== check status ==
+c -> gs: `GET /pipeline/status`\nwith pipeline ID and experiment number
+gs -> db_gs ++: find model node in DAG
+return model ID
 gs --> c: model ID
+
+== predic model ==
+c -> gs: `GET /model/:model_id/predict`
+gs -> db_gs++: find model by model ID
+return model weight
+gs -> gs: predict model
+gs --> c: result
 
 @enduml

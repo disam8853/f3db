@@ -1,3 +1,5 @@
+# TODO: insert pipeline operations into dag node
+# TODO: 
 
 import os
 import pickle
@@ -20,6 +22,8 @@ from sklearn.utils.validation import check_is_fitted
 from dag import DAG
 from utils import current_date, current_time
 from joblib import dump, load
+from environs import Env
+
 """
 def psudocode():
 
@@ -53,6 +57,8 @@ TAG = "default-tag"
 COLLECTION = "blood pressure"
 COLLECTION_VERSION = 0
 EXP_NUM = 0
+env = Env()
+env.read_env()
 
 def compare_collection_version(version1, version2):
     if version1 == version2:
@@ -62,18 +68,28 @@ def compare_collection_version(version1, version2):
 def generate_collection_version(dataframe):
     h = pd.util.hash_pandas_object
     hash = h(dataframe).sum()
-    return hash
+    return str(hash)
 
 
-def build_data_node(dag, dataframe, collection=""):
-
+def build_root_data_node(dag, dataframe, collection_name, collection_version, pipeline_id, new_node_id):
 
     node_id, node_info, node_filepath = generate_node(
-            who=WHO, user=USER, collection=COLLECTION, collection_version=COLLECTION_VERSION, experiment_number=EXP_NUM, tag=TAG, type='data', folder=DATA_FOLDER)
+            who=env('WHO'), user=env('USER'), collection=collection_name, collection_version=collection_version, experiment_number=EXP_NUM, tag=TAG, type='data', folder=DATA_FOLDER, node_id=new_node_id)
+    
     save_data(node_filepath, dataframe)
     dag.add_node(node_id, **node_info)
+    print(dag.roots)
 
-    return dag
+    return node_id
+
+def build_child_data_node(dag, dataframe, collection_name, collection_version, src_id, new_src_id=""):
+    
+    new_src_id, node_info, node_filepath = generate_node(env('WHO'), env('USER'), collection_name, collection_version, type='data', node_id=new_src_id)
+    save_data(node_filepath, dataframe)
+    dag.add_node(src_id, **node_info)
+    dag.add_edge(src_id, new_src_id)
+
+    return new_src_id
 
 
 def get_max_surrogate_number(path, prefix) -> int:
@@ -103,9 +119,10 @@ def generate_node_filepath(folder, node_id, type):
         format = '.csv'
 
     return os.path.join(folder, node_id + format)
-    
-def generate_node(who, user, collection, collection_version, experiment_number, tag, type, folder):
-    node_id = generate_node_id(type, who, user, tag)
+
+def generate_node(who, user, collection, collection_version, experiment_number=EXP_NUM, tag=TAG, type='data', folder=DATA_FOLDER, node_id=""):
+    if node_id is None:
+        node_id = generate_node_id(type, who, user, tag)
     node_filepath = generate_node_filepath(folder, node_id, type)
     node_info = {
                 'who': who,
@@ -117,6 +134,8 @@ def generate_node(who, user, collection, collection_version, experiment_number, 
                 'experiment_number': experiment_number,
                 'tag': tag,
                 'type': type, # data or model
+                'pipeline_id': "", # comma seperate, global server has 1 id, collab has many id
+                'operation': "", # comma seperate
                 'filepath': node_filepath
             }
     

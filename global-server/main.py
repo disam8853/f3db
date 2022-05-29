@@ -1,4 +1,4 @@
-from flask import Flask, request, abort, Response, jsonify, json
+from flask import Flask, request, abort, Response, jsonify, make_response
 from environs import Env
 from pymongo import MongoClient
 from bson.objectid import ObjectId
@@ -78,14 +78,16 @@ async def get_pipeline(pipeline_id):
 async def train_model():
     data = request.json
 
-    if 'pipeline_id' not in data:
-        return Response('Must provide correct pipeline ID!', 400)
-    elif 'collection' not in data:
-        return Response('Must provide correct collection!', 400)
-    elif 'query' not in data:
-        return Response('Must provide query!', 400)
+    for attr in ['pipeline_id', 'collection', 'query']:
+        if attr not in data:
+            return Response(f'Must provide correct {attr}!', 400)
 
     pipeline_id = data['pipeline_id']
+    # get newest experiment number
+    experiment_number = 1
+    if pipeline_id in WAITING_PIPELINE:
+        return make_response(jsonify(error=f'Pipeline {pipeline_id} has started fitting.', pipeline_id=pipeline_id, experiment_number=experiment_number), 400)
+
     try:
         pipeline = find_pipeline_by_id(pipeline_id)
         collaborator_pipieline_ids = pipeline['collaborator_pipieline_ids']
@@ -94,24 +96,26 @@ async def train_model():
 
     try:
         async with aiohttp.ClientSession() as session:
-            res = await asyncio.gather(*[post(f'{col["address"]}/data/process', {**request.json, "pipeline_id": col['id']}, session) for col in collaborator_pipieline_ids])
+            await asyncio.gather(*[post(f'{col["address"]}/data/process', {**request.json, "pipeline_id": col['id']}, session) for col in collaborator_pipieline_ids])
     except Exception:
         return Response('Request a train failed!', 500)
 
-    WAITING_PIPELINE[pipeline_id] = collaborator_pipieline_ids
+    WAITING_PIPELINE[pipeline_id] = {
+        "experiment_number": experiment_number,
+        "collaborators": collaborator_pipieline_ids}
     print("All collaborators have been noticed")
-    return jsonify(res_from_col=res)
+    return jsonify({'pipeline_id': pipeline_id, **WAITING_PIPELINE[pipeline_id]})
 
 
 @app.route('/pipeline/merge', methods=['POST'])
 def merge_pipeline():
     data = request.json
-    df = data['dataframe']
 
     for attr in ['pipeline_id', 'dataframe', 'dag_json']:
         if attr not in data:
             return Response(f'Must provide correct {attr}!', 400)
 
+    df = data['dataframe']
     col_pipeline_id = data['pipeline_id']
     try:
         pipeline = pipelines_db.find_one(
@@ -123,7 +127,7 @@ def merge_pipeline():
     if pipeline_id not in WAITING_PIPELINE:
         return Response('Pipeline has not started fitting', 400)
     col_pipeline_in_waiting = next(
-        (item for item in WAITING_PIPELINE[pipeline_id] if item["id"] == col_pipeline_id), None)
+        (item for item in WAITING_PIPELINE[pipeline_id]['collaborators'] if item["id"] == col_pipeline_id), None)
     if col_pipeline_in_waiting is None:
         return Response(f'Collaborator {col_pipeline_id} has submitted.', 400)
     if pipeline_id not in DATA:
@@ -131,17 +135,17 @@ def merge_pipeline():
     DATA[pipeline_id].append(df)
 
     # remove collaborator that has submitted df from waiting list
-    WAITING_PIPELINE[pipeline_id] = [
-        p for p in WAITING_PIPELINE[pipeline_id] if p.get('id') != col_pipeline_id]
-    print(WAITING_PIPELINE)
+    WAITING_PIPELINE[pipeline_id]['collaborators'] = [
+        p for p in WAITING_PIPELINE[pipeline_id]['collaborators'] if p.get('id') != col_pipeline_id]
 
-    if len(WAITING_PIPELINE[pipeline_id]) == 0:
+    if len(WAITING_PIPELINE[pipeline_id]['collaborators']) == 0:
         try:
             dag = merge_data(data=DATA[pipeline_id], pipeline_id=pipeline_id)
             model_id = run_pipeline(dag=dag)
         except Exception as e:
             return Response('Merge failed.\n' + str(e), 400)
         del WAITING_PIPELINE[pipeline_id]
+        del DATA[pipeline_id]
         return jsonify(model_id=model_id)
 
     del pipeline['_id']
