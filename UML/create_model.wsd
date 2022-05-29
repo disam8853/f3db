@@ -12,21 +12,21 @@ c -> gs: `POST /pipeline`\nwith pipeline info
 group for every collaborators [wait until all collaborators respond]
 gs -> col: `POST /pipeline`\nwith collaborator pipeline
 col -> db_col ++: save pipeline to MongoDB
-return saved to Col DB!
-col --> gs: ack!
+return ok
+col --> gs: ack
 end
 gs -> db_gs++: save pipeline to Global Server DB
-return saved to GS DB!
+return ok
 gs --> c: Global Server pipeline ID
 
 == Execute Pipeline ==
 
-c -> gs: `POST /pipeline/fit`\nwith collection and query in body
+c -> gs: `POST /pipeline/fit`\nwith collection and query in body\nand pipeline ID
 gs -> db_gs++: find pipeline with pipeline ID
 return Global Server pipeline
 
 group for every collaborators [wait until all collaborators respond]
-gs -> col: `POST /data/process`\nwith pipeline and colleciton data
+gs -> col: `POST /data/process`\nwith pipeline and collection data
 return ack
 end
 
@@ -40,7 +40,7 @@ col_subprocess -> db_col++: find training data with collection
 return training data
 col_subprocess -> col_subprocess: execute Collaborator pipeline
 col_subprocess -> db_col++: save intermediate data to Col DB\nas a DAG
-return
+return ok
 col_subprocess --> gs: intermediate data and pipeline ID and DAG
 col_subprocess -> col_subprocess !!: close subprocess
 end
