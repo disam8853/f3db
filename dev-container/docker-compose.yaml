@@ -7,7 +7,7 @@ services:
       - 20000:8000
     volumes:
       - ../global-server:/app
-      - ./volumn/global-server/DATA-FOLDER:/app/DATA-FOLDER
+      - ./volumn/global-server/DATA_FOLDER:/app/DATA_FOLDER
     environment:
       - MONGODB_URL=mongodb://mongo-global:27017/f3db
       - FLASK_APP=main.py
@@ -24,7 +24,7 @@ services:
       - 20001:8000
     volumes:
       - ../collaborator:/app
-      - ./volumn/collaborator1/DATA-FOLDER:/app/DATA-FOLDER
+      - ./volumn/collaborator1/DATA_FOLDER:/app/DATA_FOLDER
     environment:
       - MONGODB_URL=mongodb://mongo1:27017/f3db
       - FLASK_APP=main.py
@@ -40,7 +40,7 @@ services:
       - 20002:8000
     volumes:
       - ../collaborator:/app
-      - ./volumn/collaborator2/DATA-FOLDER:/app/DATA-FOLDER
+      - ./volumn/collaborator2/DATA_FOLDER:/app/DATA_FOLDER
     environment:
       - MONGODB_URL=mongodb://mongo2:27017/f3db
       - FLASK_APP=main.py
