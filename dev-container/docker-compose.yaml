@@ -17,6 +17,7 @@ services:
       - WHO=global-server
       - USER=admin
       - COLLABORATORS_URL=http://collaborator1:8000,http://collaborator2:8000
+      - PYTHONUNBUFFERED=1
   collaborator1:
     container_name: collaborator1
     build: ../collaborator
@@ -33,6 +34,7 @@ services:
       - FLASK_RUN_HOST=0.0.0.0
       - WHO=collaborator1
       - USER=admin
+      - PYTHONUNBUFFERED=1
   collaborator2:
     container_name: collaborator2
     build: ../collaborator
@@ -49,6 +51,7 @@ services:
       - FLASK_RUN_HOST=0.0.0.0
       - WHO=collaborator2
       - USER=admin
+      - PYTHONUNBUFFERED=1
   mongo-global:
     image: mongo
     volumes:
