@@ -16,6 +16,7 @@ db_client = MongoClient(env("MONGODB_URL"))
 pipelines_db = db_client['f3db'].pipelines
 
 WAITING_PIPELINE = {}
+DATA = {}
 
 
 @app.route("/", methods=['GET'])
@@ -105,18 +106,55 @@ async def train_model():
 @app.route('/pipeline/merge', methods=['POST'])
 def merge_pipeline():
     data = request.json
+    df = data['dataframe']
 
-    if 'pipeline_id' not in data:
-        return Response('Must provide correct pipeline ID!', 400)
-    col_piipeline_id = data['pipeline_id']
+    for attr in ['pipeline_id', 'dataframe', 'dag_json']:
+        if attr not in data:
+            return Response(f'Must provide correct {attr}!', 400)
+
+    col_pipeline_id = data['pipeline_id']
     try:
-        col_pipeline = pipelines_db.find_one(
-            {"collaborator_pipieline_ids.id": col_piipeline_id}, {"_id": 0})
+        pipeline = pipelines_db.find_one(
+            {"collaborator_pipieline_ids.id": col_pipeline_id})
+        pipeline_id = str(pipeline['_id'])
     except Exception:
         return Response('Failed to get pipeline!', 400)
 
-    return jsonify(col_pipeline)
+    if pipeline_id not in WAITING_PIPELINE:
+        return Response('Pipeline has not started fitting', 400)
+    col_pipeline_in_waiting = next(
+        (item for item in WAITING_PIPELINE[pipeline_id] if item["id"] == col_pipeline_id), None)
+    if col_pipeline_in_waiting is None:
+        return Response(f'Collaborator {col_pipeline_id} has submitted.', 400)
+    if pipeline_id not in DATA:
+        DATA[pipeline_id] = []
+    DATA[pipeline_id].append(df)
+
+    # remove collaborator that has submitted df from waiting list
+    WAITING_PIPELINE[pipeline_id] = [
+        p for p in WAITING_PIPELINE[pipeline_id] if p.get('id') != col_pipeline_id]
+    print(WAITING_PIPELINE)
+
+    if len(WAITING_PIPELINE[pipeline_id]) == 0:
+        try:
+            dag = merge_data(data=DATA[pipeline_id], pipeline_id=pipeline_id)
+            model_id = run_pipeline(dag=dag)
+        except Exception as e:
+            return Response('Merge failed.\n' + str(e), 400)
+        del WAITING_PIPELINE[pipeline_id]
+        return jsonify(model_id=model_id)
+
+    del pipeline['_id']
+    return jsonify(collaborators=pipeline['collaborator_pipieline_ids'])
 
 
 def find_pipeline_by_id(pipeline_id):
     return pipelines_db.find_one({'_id': ObjectId(pipeline_id)}, {"_id": 0})
+
+
+def merge_data(data, pipeline_id):
+    return True
+
+
+def run_pipeline(dag):
+    return 12
