@@ -12,7 +12,9 @@ services:
       - FLASK_ENV=development
       - FLASK_RUN_PORT=8000
       - FLASK_RUN_HOST=0.0.0.0
-      - COLLABORATORS_URL=http://collaborator1,http://collaborator2
+      - WHO=global-server
+      - USER=admin
+      - COLLABORATORS_URL=http://collaborator1:8000,http://collaborator2:8000
   collaborator1:
     build: ../collaborator
     ports:
@@ -25,6 +27,8 @@ services:
       - FLASK_ENV=development
       - FLASK_RUN_PORT=8000
       - FLASK_RUN_HOST=0.0.0.0
+      - WHO=collaborator1
+      - USER=admin
   collaborator2:
     build: ../collaborator
     ports:
@@ -37,6 +41,8 @@ services:
       - FLASK_ENV=development
       - FLASK_RUN_PORT=8000
       - FLASK_RUN_HOST=0.0.0.0
+      - WHO=collaborator2
+      - USER=admin
   mongo-global:
     image: mongo
     volumes:
