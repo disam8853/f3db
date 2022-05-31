@@ -5,6 +5,7 @@ from bson.objectid import ObjectId
 import aiohttp
 import asyncio
 from merge import merge_pipeline
+from dag import DAG
 
 env = Env()
 env.read_env()
@@ -15,6 +16,8 @@ print(collaborators)
 
 db_client = MongoClient(env("MONGODB_URL"))
 pipelines_db = db_client['f3db'].pipelines
+
+dag = DAG('graph.gml.gz')
 
 WAITING_PIPELINE = {}
 DATA = {}
@@ -141,7 +144,7 @@ def merge_pipeline():
 
     if len(WAITING_PIPELINE[pipeline_id]['collaborators']) == 0:
         try:
-            dag = merge_pipeline(data=DATA[pipeline_id], pipeline_id=pipeline_id)
+            merge_pipeline(dag, data=DATA[pipeline_id], pipeline_id=pipeline_id)
             model_id = run_pipeline(dag=dag)
         except Exception as e:
             return Response('Merge failed.\n' + str(e), 400)

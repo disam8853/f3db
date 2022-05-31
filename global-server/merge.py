@@ -2,7 +2,7 @@
 from dag import DAG
 from utils import pickle_decode
 
-def merge_pipeline(data, pipeline_id):
+def merge_pipeline(global_dag: DAG, collaborator_data: list, global_pipeline_id: str) -> None:
     
     """
     1. get all collaborator post request data
@@ -16,22 +16,28 @@ def merge_pipeline(data, pipeline_id):
     }
     """
 
-    # TODO: turn data type into dict
-    pipeline_id = data['pipeline_id']
-    dag = DAG(data['dag_json'])
-    dataframe = pickle_decode(data['dataframe'])
+    # TODO: create empty dataframe
 
-    # TODO: check all dag
+    # TODO: crete new_data_node with empty file
     
-    # TODO: decode data and turn into dataframe
-    
-    # TODO: merge data
-    
-    # TODO: crete new data node
+    # iter each collaborator post data
+    for data in collaborator_data:
 
-    # TODO: add data node to collaborator dag
+        # TODO: if data is json, turn data into dict
 
-    # TODO: merge dag
+        colab_pipeline_id = data['pipeline_id']
+        colab_dag = DAG(data['dag_json'])
+        colab_dataframe = pickle_decode(data['dataframe'])
 
-    
+        # TODO: check collaborator dag
+
+        # TODO: merge data
+
+        # TODO: find last colab_data_node by colab_pipeline_id
+
+        # TODO: add edge between collab_data_node & new_data_node
+
+        # TODO: merge global_dag & colab_dag
+
+
     return None
