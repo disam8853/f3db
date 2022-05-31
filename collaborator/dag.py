@@ -179,6 +179,14 @@ class DAG():
         data = json_graph.node_link_data(self.G)
         return data
 
+    def get_subgraph(self, src_id) -> DAG:
+        s = self.G.subgraph(nx.dfs_tree(self.G, src_id="1").nodes())
+        return s
+
+    def get_nodes_with_attributes(self, attribute, value) -> dict:
+        selected_data = dict( (n,d) for n,d in self.G.nodes().items() if d[attribute] == value)
+        return selected_data
+
 if __name__ == "__main__":
     print("\n**** create graph ****")
     dag = DAG(nx.MultiDiGraph())

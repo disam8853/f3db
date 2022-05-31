@@ -1,7 +1,8 @@
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.datasets import make_classification
 from sklearn.model_selection import train_test_split
-from bobo_pipeline import Pipeline
+# from bobo_pipeline import Pipeline
+from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import FunctionTransformer, StandardScaler
 from sklearn.svm import SVC
 from sklearn.decomposition import PCA
@@ -10,60 +11,40 @@ import numpy as np
 from random import randrange, choice
 from sklearn.neighbors import NearestNeighbors
 
-
 def basic_classification_pipeline():
+    def check_fitted(clf): 
+        return hasattr(clf, "classes_")
     print("start")
-    x, y = read_data(rid)
-    op = [('pca', PCA()), ('scaler', StandardScaler())]
-    pipe = Pipeline(op)
-    # The pipeline can be used as any other estimator
-    # and avoids leaking the test set into the train set
-    pipe.fit(X_train, y_train)
-    if op[-1] is model:
-        x = pipe.model_weight
-        id, path = save_model()
-    else:
-        x = pipe.transform_data
-        id, path = save_data()
-    
-    dag.add_node(id, path=path)
-    dag.add_edge(rid , id)
-
-    print("\n***** dag result *****\n")
-    print("show all roots: ", pipe.dag.roots)
-    print("show all nodes: ", pipe.dag.nodes)
-    print("show nodes_info: ", pipe.dag.nodes_info)
-    print("show number_of_nodes: ", pipe.dag.number_of_nodes)
-    print("show number_of_edges: ", pipe.dag.number_of_edges)
-    print("show edges: ", pipe.dag.get_node_edges(pipe.dag.get_topological_sort()))
-    print("finish")
-
-class ReadData(BaseEstimator, TransformerMixin):
-    def __init__(self):
-        pass
-
-    #Return self nothing else to do here
-    def fit(self, X, y=None):
-        return self
-
-    #Method that describes what we need this transformer to do
-    def transform(self, X, y=None):
-        X, y = make_classification(random_state=0)
-        X_train, X_test, y_train, y_test = train_test_split(X, y,
+    X, y = make_classification(random_state=0)
+    X_train, X_test, y_train, y_test = train_test_split(X, y,
                                                             random_state=0)
-        return X
+    op_data = [('pca', PCA()), ('scaler', StandardScaler())]
+    pipe = Pipeline(op_data)
+    pipe.fit(X_train, y_train)
 
-class SaveData(BaseEstimator, TransformerMixin):
-    def __init__(self):
-        pass
+    last = pipe.steps[-1][1]
+    print(last)
+    print(check_fitted(last))
 
-    #Return self nothing else to do here
-    def fit(self, X, y=None):
-        return self
+    op_model = [('pca', PCA()), ('scaler', StandardScaler()), ('svc', SVC())]
+    pipe = Pipeline(op_model)
+    pipe.fit(X_train, y_train)
 
-    #Method that describes what we need this transformer to do
-    def transform(self, X, y=None):
-        return X
+    last = pipe.steps[-1][1]
+    print(last)
+    print(check_fitted(last))
+
+    
+    # print("\n***** dag result *****\n")
+    # print("show all roots: ", pipe.dag.roots)
+    # print("show all nodes: ", pipe.dag.nodes)
+    # print("show nodes_info: ", pipe.dag.nodes_info)
+    # print("show number_of_nodes: ", pipe.dag.number_of_nodes)
+    # print("show number_of_edges: ", pipe.dag.number_of_edges)
+    # print("show edges: ", pipe.dag.get_node_edges(pipe.dag.get_topological_sort()))
+    # print("finish")
+
+
 
 class FeatureSelector(BaseEstimator, TransformerMixin):
     def __init__(self, feature_map: dict=None,  feature_keys: list=None):
@@ -176,6 +157,6 @@ def fisher(X, y, percentile=None):
 
 
 if __name__ == "__main__":
-    basic_classification_pipeline()
-
+    # basic_classification_pipeline()
+    pass
 
