@@ -23,7 +23,7 @@ from dag import DAG
 from utils import current_date, current_time
 from joblib import dump, load
 from environs import Env
-
+from parse import parse, parse_param
 """
 def psudocode():
 
@@ -142,30 +142,31 @@ def generate_node(who, user, collection, collection_version, experiment_number=E
     return node_id, node_info, node_filepath
 
 
-def build_pipeline(dag, src_id, ops, experiment_number=EXP_NUM, tag=TAG):
-    def check_fitted(clf): 
-        return hasattr(clf, "classes_")
+def build_pipeline(dag, src_id, ops, param_list, experiment_number=EXP_NUM, tag=TAG  ):
+    data_path = dag.get_node_attr(src_id)['filepath']
+    dataframe = pd.read_csv(data_path)
+    print(dataframe.columns)
+    X = dataframe.drop('CV',axis=1)
+    X = X.drop('_id', axis=1)
+    y =  dataframe['CV']
+    print(dataframe.head())
+   
+    pipe_string = parse_pipe_to_string(ops)
     
-    # read data
-    X, y = make_classification(random_state=0)
-
     pipe = Pipeline(ops)
-    X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=0)
-    pipe.fit(X_train, y_train)
-
     # is model
-    if check_fitted(pipe.steps[-1][1]):
-        
+    if (ops[-1][0] == 'model'):
+        print('is model')
         node_id, node_info, node_filepath = generate_node(
             who=WHO, user=USER, collection=COLLECTION, collection_version=COLLECTION_VERSION, experiment_number=EXP_NUM, tag=TAG, type='model', folder=DATA_FOLDER)
+        pipe.set_params(**param_list)
+        print('model',pipe.get_params())
         
-        print('is model')
-        print(node_filepath)
-        
-        save_model(node_filepath, pipe.steps[-1][1])
+        save_model(node_filepath, pipe.steps[-1][1].fit(X,y))
         dag.add_node(node_id, **node_info)
+        # final_data = 
         # dag.add_edge(src_id, node_id)
-
+        return node_id
     # is data
     else:
     
@@ -173,15 +174,19 @@ def build_pipeline(dag, src_id, ops, experiment_number=EXP_NUM, tag=TAG):
             who=WHO, user=USER, collection=COLLECTION, collection_version=COLLECTION_VERSION, experiment_number=EXP_NUM, tag=TAG, type='data', folder=DATA_FOLDER)
         
         print('is data')
-        print(node_filepath)
-        
-        trans_data = pipe.fit_transform(X, y)
-        tras_pd_data = pd.DataFrame(trans_data)
-        save_data(node_filepath, tras_pd_data)
+        # print(node_filepath)
+        pipe.set_params(**param_list)
+        print(pipe.get_params())
+        trans_data = pipe.fit_transform(X,y)
+        trans_pd_data = pd.DataFrame(trans_data)
+        y = pd.DataFrame(y)
+        final_data = pd.concat([trans_pd_data,y],axis=1)
+        final_data.columns = [np.arange(0,final_data.shape[1])]
+        save_data(node_filepath, final_data)
         dag.add_node(node_id, **node_info)
         # dag.add_edge(src_id, node_id)
-
-    return dag
+        # print('EWW',final_data)
+        return node_id
 
 def save_data(filepath, trans_data):
     trans_data.to_csv(filepath, index = False)
@@ -193,8 +198,18 @@ def save_model(filepath, clf):
 
 def read_model():
     clf = load('DATA_FOLDER/model_global-server_bobo_default-tag_2022-05-28_0.joblib')
-    print(clf.classes_)
+    # print(clf.classes_)
 
+def parse_pipe_to_string(ops):
+    op_str = ""
+    for step in ops:
+        item = str(step[1])
+        if(ops.index(step) == 0):
+            op_str += item
+        else:
+            op_str += str(',') + item
+    # print(op_str)
+    return op_str
 
 if __name__ == "__main__":
     op_data = [('pca', PCA()), ('scaler', StandardScaler())]

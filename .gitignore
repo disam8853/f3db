@@ -9,7 +9,7 @@ dev-container/dataMongo
 .DS_Store
 
 graph.ipynb
-test.gml.gz
+**/test.gml.gz
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

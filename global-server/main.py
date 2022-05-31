@@ -4,6 +4,7 @@ from pymongo import MongoClient
 from bson.objectid import ObjectId
 import aiohttp
 import asyncio
+from merge import merge_pipeline
 
 env = Env()
 env.read_env()
@@ -140,7 +141,7 @@ def merge_pipeline():
 
     if len(WAITING_PIPELINE[pipeline_id]['collaborators']) == 0:
         try:
-            dag = merge_data(data=DATA[pipeline_id], pipeline_id=pipeline_id)
+            dag = merge_pipeline(data=DATA[pipeline_id], pipeline_id=pipeline_id)
             model_id = run_pipeline(dag=dag)
         except Exception as e:
             return Response('Merge failed.\n' + str(e), 400)
@@ -155,9 +156,6 @@ def merge_pipeline():
 def find_pipeline_by_id(pipeline_id):
     return pipelines_db.find_one({'_id': ObjectId(pipeline_id)}, {"_id": 0})
 
-
-def merge_data(data, pipeline_id):
-    return True
 
 
 def run_pipeline(dag):

@@ -6,4 +6,4 @@ COPY . /app
 RUN pip install -r requirements.txt && pip install flask[async]
 EXPOSE 5000
 
-ENTRYPOINT [ "flask", "run" ]
+ENTRYPOINT [ "flask", "run", "--with-threads" ]

@@ -1,11 +1,24 @@
-# TODO: union collaborator and global dag
+from __future__ import annotations
 # TODO: maintain consistency between global & local dag
-
+# TODO: compare two dag is same or not
 
 import networkx as nx
+from networkx.readwrite import json_graph
 from utils import current_time, current_date
 from functools import singledispatch, update_wrapper
+import json
+import numpy as np
 
+
+class NpEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        if isinstance(obj, np.floating):
+            return float(obj)
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return super(NpEncoder, self).default(obj)
 
 class DAG():
     def dag_refresh(func):
@@ -18,16 +31,20 @@ class DAG():
             self.number_of_edges = nx.number_of_edges(self.G)
             self.number_of_nodes = nx.number_of_nodes(self.G)
             self.type = type(self.G)
+
+            self.save_graph("./DATA_FOLDER/graph.gml.gz")
             return output
         return wrapper
 
-    def methdispatch(func):
+    def dispatchmethod(func):
         dispatcher = singledispatch(func)
         def wrapper(*args, **kw):
             return dispatcher.dispatch(args[1].__class__)(*args, **kw)
         wrapper.register = dispatcher.register
         update_wrapper(wrapper, func)
         return wrapper
+
+    
 
     @dag_refresh
     def __init__(self, graph_object):
@@ -51,10 +68,16 @@ class DAG():
                 'operation': "", # comma seperate
                 'filepath':'default filepath'
             }
-        if type(graph_object) is str:
-            self.G = nx.read_gml(graph_object)
-        else:
-            self.G = graph_object
+        
+        try:
+            if type(graph_object) is str:
+                self.G = nx.read_gml(graph_object)
+            elif type(graph_object) is dict:
+                self.G = json_graph.node_link_graph(graph_object)
+            else:
+                self.G = graph_object
+        except:
+            self.G = nx.MultiDiGraph()
 
     @dag_refresh
     def add_edge(self, src_idx, dest_idx) -> bool:
@@ -101,10 +124,10 @@ class DAG():
         except nx.NetworkXError as err:
             print(str(err))
             return False
-    
-    @methdispatch
+
+    @dispatchmethod
     @dag_refresh
-    def dag_compose(self, other_dag) -> bool:
+    def dag_compose(self, other_dag: DAG) -> bool:
         C = nx.compose(self.G, other_dag)
         self.G = C
 
@@ -148,6 +171,13 @@ class DAG():
     def save_graph(self, filepath) -> None:
         nx.write_gml(self.G, filepath)
 
+    def get_json_graph(self) -> json:
+        data = json_graph.node_link_data(self.G)
+        return json.dumps(data, cls=NpEncoder)
+
+    def get_dict_graph(self) -> dict:
+        data = json_graph.node_link_data(self.G)
+        return data
 
 if __name__ == "__main__":
     print("\n**** create graph ****")
@@ -204,3 +234,5 @@ if __name__ == "__main__":
     G1.dag_compose([G2.G, G3.G])
     print("show G1, G2, G3 nodes: ", G1.nodes)
             
+
+        

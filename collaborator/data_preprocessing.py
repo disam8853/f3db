@@ -1,4 +1,4 @@
-from asyncio.windows_events import NULL
+
 from utils import pickle_encode
 import pandas as pd
 from f3db_pipeline import build_child_data_node, get_max_surrogate_number, generate_collection_version, compare_collection_version, build_root_data_node, build_pipeline
@@ -58,34 +58,35 @@ def long_data_transform(lock, dag:DAG, df:pd.DataFrame, collection_name:str, pip
         
 
     # parse: pipeline dict to real pipline (chung)
-    parsed_pipeline = parse(pipeline)
+    parsed_pipeline = parse(pipeline, 'collaborator')
 
     # do pipeline (chung)
-    first_pipe = NULL
-    pipe_param_string = parse_param(pipeline,'global-server')
+    
+    pipe_param_string = parse_param(pipeline, 'collaborator')
     # print(pipe_param_string)
     for sub_pipeline in parsed_pipeline:
         sub_pipeline_param_list = pipe_param_string[parsed_pipeline.index(sub_pipeline)]
 
        
         if(parsed_pipeline.index(sub_pipeline) == 0):
-            first_pipe = build_pipeline(dag,1,sub_pipeline, first_pipe=first_pipe,param_list = sub_pipeline_param_list)
+            src_id = build_pipeline(dag, src_id, sub_pipeline, param_list = sub_pipeline_param_list)
         else:
-            if(sub_pipeline == 'train_test_split'):
-                X = first_pipe[first_pipe.columns[0:-1]]
-                y  = first_pipe[first_pipe.columns[-1]]
-                X_train,X_test,y_trian,y_test = train_test_split(X,y, test_size=0.2, random_state=42)
+            # if(sub_pipeline == 'train_test_split'):
+            #     X = first_pipe[first_pipe.columns[0:-1]]
+            #     y  = first_pipe[first_pipe.columns[-1]]
+            #     X_train,X_test,y_trian,y_test = train_test_split(X,y, test_size=0.2, random_state=42)
                 
-                X_train = pd.DataFrame(X_train)
-                X_test = pd.DataFrame(X_test)
-                first_pipe = pd.concat([X_train,X_test],axis =0)
-                # print('tttt', first_pipe)
-            else:
-                first_pipe = build_pipeline(dag,1,sub_pipeline, first_pipe=first_pipe,param_list = sub_pipeline_param_list)
+            #     X_train = pd.DataFrame(X_train)
+            #     X_test = pd.DataFrame(X_test)
+            #     first_pipe = pd.concat([X_train,X_test],axis =0)
+            #     # print('tttt', first_pipe)
+            # else:
+            src_id = build_pipeline(dag, src_id, sub_pipeline, param_list = sub_pipeline_param_list)
 
 
     print(dag.nodes)
     print(dag.roots)
+
     import time
     for i in range(3):
         print(i)
