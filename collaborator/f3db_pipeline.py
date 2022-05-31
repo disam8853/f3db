@@ -91,6 +91,9 @@ def build_child_data_node(dag, dataframe, collection_name, collection_version, s
 
     return new_src_id
 
+# TODO: add funcion to build model node
+def build_model_node(dag):
+    pass
 
 def get_max_surrogate_number(path, prefix) -> int:
     same_files = []
@@ -121,7 +124,7 @@ def generate_node_filepath(folder, node_id, type):
     return os.path.join(folder, node_id + format)
 
 def generate_node(who, user, collection, collection_version, experiment_number=EXP_NUM, tag=TAG, type='data', folder=DATA_FOLDER, node_id=""):
-    if node_id is None:
+    if node_id == "":
         node_id = generate_node_id(type, who, user, tag)
     node_filepath = generate_node_filepath(folder, node_id, type)
     node_info = {
@@ -142,58 +145,59 @@ def generate_node(who, user, collection, collection_version, experiment_number=E
     return node_id, node_info, node_filepath
 
 
-def build_pipeline(dag, src_id, ops, param_list, experiment_number=EXP_NUM, tag=TAG  ):
+def build_pipeline(dag, src_id, ops, param_list, experiment_number=EXP_NUM, tag=TAG):
     data_path = dag.get_node_attr(src_id)['filepath']
     dataframe = pd.read_csv(data_path)
-    print(dataframe.columns)
-    X = dataframe.drop('CV',axis=1)
+    print("build_pipeline: ", dataframe.head())
+    X = dataframe.drop('CV',axis=1) # TODO: change header to number or catch exception or record the header change in pipeline (recommand)
     X = X.drop('_id', axis=1)
-    y =  dataframe['CV']
-    print(dataframe.head())
+    y =  dataframe['CV'] # sklearn will drop header after some data transformation
    
     pipe_string = parse_pipe_to_string(ops)
     
     pipe = Pipeline(ops)
+
     # is model
     if (ops[-1][0] == 'model'):
         print('is model')
         node_id, node_info, node_filepath = generate_node(
             who=WHO, user=USER, collection=COLLECTION, collection_version=COLLECTION_VERSION, experiment_number=EXP_NUM, tag=TAG, type='model', folder=DATA_FOLDER)
         pipe.set_params(**param_list)
-        print('model',pipe.get_params())
         
         save_model(node_filepath, pipe.steps[-1][1].fit(X,y))
         dag.add_node(node_id, **node_info)
-        # final_data = 
-        # dag.add_edge(src_id, node_id)
+        dag.add_edge(src_id, node_id)
         return node_id
+
     # is data
     else:
     
         node_id, node_info, node_filepath = generate_node(
             who=WHO, user=USER, collection=COLLECTION, collection_version=COLLECTION_VERSION, experiment_number=EXP_NUM, tag=TAG, type='data', folder=DATA_FOLDER)
         
+        
         print('is data')
-        # print(node_filepath)
         pipe.set_params(**param_list)
-        print(pipe.get_params())
         trans_data = pipe.fit_transform(X,y)
-        trans_pd_data = pd.DataFrame(trans_data)
+        trans_pd_data = pd.DataFrame(trans_data, columns = dataframe.columns) # TODO: if columns change, detect and do sth
+        
         y = pd.DataFrame(y)
         final_data = pd.concat([trans_pd_data,y],axis=1)
         final_data.columns = [np.arange(0,final_data.shape[1])]
+        
+        print(final_data.head())
         save_data(node_filepath, final_data)
         dag.add_node(node_id, **node_info)
-        # dag.add_edge(src_id, node_id)
+        dag.add_edge(src_id, node_id)
         # print('EWW',final_data)
         return node_id
 
-def save_data(filepath, trans_data):
+def save_data(filepath, trans_data) -> None:
     trans_data.to_csv(filepath, index = False)
     # dag.add_node(id, path=path)
     # dag.add_edge(rid , id
 
-def save_model(filepath, clf):
+def save_model(filepath, clf) -> None:
     dump(clf, filepath) 
 
 def read_model():
