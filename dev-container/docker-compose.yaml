@@ -85,11 +85,17 @@ services:
     restart: always
     environment:
       - MONGO_INITDB_DATABASE=f3db
-  mongo-seed:
+  mongo1-seed:
     image: mongo
     volumes:
       - ./seed-data:/seed-data
-    command: mongoimport -h mongo1,mongo2 --db f3db -c test --type csv --mode upsert --headerline --file /seed-data/pressures.csv
+    command: mongoimport -h mongo1 --db f3db -c test --type csv --mode upsert --headerline --file /seed-data/pressures.csv
     depends_on:
       - mongo1
+  mongo2-seed:
+    image: mongo
+    volumes:
+      - ./seed-data:/seed-data
+    command: mongoimport -h mongo2 --db f3db -c test --type csv --mode upsert --headerline --file /seed-data/pressures.csv
+    depends_on:
       - mongo2
