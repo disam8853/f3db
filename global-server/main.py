@@ -107,7 +107,8 @@ async def train_model():
 
     WAITING_PIPELINE[pipeline_id] = {
         "experiment_number": experiment_number,
-        "collaborators": collaborator_pipieline_ids}
+        "collaborators": collaborator_pipieline_ids,
+        "collection": data['collection']}
     print("All collaborators have been noticed")
     return jsonify({'pipeline_id': pipeline_id, **WAITING_PIPELINE[pipeline_id]})
 
@@ -145,8 +146,9 @@ def merge_pipeline_api():
     if len(WAITING_PIPELINE[pipeline_id]['collaborators']) == 0:
         try:
             experiment_number = WAITING_PIPELINE[pipeline_id]['experiment_number']
+            collection = WAITING_PIPELINE[pipeline_id]['collection']
             merge_pipeline(dag, DATA[pipeline_id],
-                           pipeline_id, experiment_number)
+                           pipeline_id, experiment_number, collection)
             model_id = run_pipeline(dag)
         except Exception as e:
             return Response('Merge failed.\n' + str(e), 400)

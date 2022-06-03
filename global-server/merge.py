@@ -9,13 +9,11 @@ DATA_FOLDER = "./DATA_FOLDER/"
 WHO = 'global-server'
 USER = "bobo"
 TAG = "default-tag"
-COLLECTION = "blood pressure"
 COLLECTION_VERSION = 0
 EXP_NUM = 0
 
 
-def merge_pipeline(global_dag: DAG, collaborator_data: list, global_pipeline_id: str, experiment_number:int) -> None:
-    
+def merge_pipeline(global_dag: DAG, collaborator_data: list, global_pipeline_id: str, experiment_number: int, collection: str) -> None:
     """
     1. get all collaborator post request data
     2. merge dag and dataframe
@@ -27,14 +25,14 @@ def merge_pipeline(global_dag: DAG, collaborator_data: list, global_pipeline_id:
         "dataframe": pickle_encode(df)
     }, {}]
     """
-    
+
     # TODO: create empty dataframe
     global_df = pd.DataFrame()
 
     # TODO: crete new_data_node with empty file
     # TODO: change variables
     global_node_id, global_node_info, global_node_filepath = generate_node(
-            who=WHO, user=USER, collection=COLLECTION, collection_version=COLLECTION_VERSION, experiment_number=experiment_number, pipeline_id=global_pipeline_id, tag=TAG, type='data', folder=DATA_FOLDER)
+        who=WHO, user=USER, collection=collection, collection_version=COLLECTION_VERSION, experiment_number=experiment_number, pipeline_id=global_pipeline_id, tag=TAG, type='data', folder=DATA_FOLDER)
     global_dag.add_node(global_node_id, **global_node_info)
     # iter each collaborator post data
     for data in collaborator_data:
@@ -47,13 +45,13 @@ def merge_pipeline(global_dag: DAG, collaborator_data: list, global_pipeline_id:
             colab_last_node = data['last_node']
 
             # TODO: check collaborator dag
-            
+
             # merge data
             global_df = pd.concat([global_df, colab_df])
 
             # find last colab_data_node by colab_pipeline_id
             # colab_node_id = colab_dag.get_nodes_with_attributes("pipeline_id", colab_pipeline_id)
-            
+
             # merge global_dag & colab_dag
             global_dag.dag_compose(colab_dag.G)
 
