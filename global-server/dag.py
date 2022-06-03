@@ -27,6 +27,7 @@ class DAG():
             output = func(self, *args, **kwargs)
             self.roots = [n for n,d in self.G.in_degree() if d==0]
             self.nodes = self.G.nodes()
+            self.leaves = [n for n in self.G.nodes() if self.G.out_degree(n)==0 and self.G.in_degree(n)>=1]
             self.nodes_info = self.G.nodes(data=True)
             self.number_of_edges = nx.number_of_edges(self.G)
             self.number_of_nodes = nx.number_of_nodes(self.G)
@@ -50,6 +51,7 @@ class DAG():
     def __init__(self, graph_object):
         self.roots = []
         self.nodes = []
+        self.leaves = []
         self.nodes_info = []
         self.number_of_edges = 0
         self.number_of_nodes = 0
@@ -66,7 +68,9 @@ class DAG():
                 'type': 'data', # data or model
                 'pipeline_id': "", # comma seperate, global server has 1 id, collab has many id
                 'operation': "", # comma seperate
-                'filepath':'default filepath'
+                'filepath':'default filepath',
+                'x_headers': "", # comma seperate, global server has 1 id, collab has many id -> list of strings
+                'y_headers': "", # 1 string
             }
         
         try:
@@ -178,6 +182,16 @@ class DAG():
     def get_dict_graph(self) -> dict:
         data = json_graph.node_link_data(self.G)
         return data
+
+    def get_subgraph(self, src_id) -> DAG:
+        s = self.G.subgraph(nx.dfs_tree(self.G, src_id="1").nodes())
+        return s
+
+    def get_nodes_with_attributes(self, attribute, value) -> dict:
+        selected_data = dict( (n,d) for n,d in self.G.nodes().items() if d[attribute] == value)
+        return selected_data
+
+
 
 if __name__ == "__main__":
     print("\n**** create graph ****")

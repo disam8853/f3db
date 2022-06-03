@@ -72,9 +72,9 @@ def generate_collection_version(dataframe):
 
 
 def build_root_data_node(dag, dataframe, collection_name, collection_version, pipeline_id, new_node_id):
-
+    
     node_id, node_info, node_filepath = generate_node(
-            who=env('WHO'), user=env('USER'), collection=collection_name, collection_version=collection_version, experiment_number=EXP_NUM, tag=TAG, type='data', folder=DATA_FOLDER, node_id=new_node_id)
+            who=env('WHO'), user=env('USER'), collection=collection_name, collection_version=collection_version, pipeline_id=pipeline_id, experiment_number=EXP_NUM, tag=TAG, type='root', folder=DATA_FOLDER, node_id=new_node_id)
     
     save_data(node_filepath, dataframe)
     dag.add_node(node_id, **node_info)
@@ -84,7 +84,7 @@ def build_root_data_node(dag, dataframe, collection_name, collection_version, pi
 
 def build_child_data_node(dag, dataframe, collection_name, collection_version, src_id, new_src_id=""):
     
-    new_src_id, node_info, node_filepath = generate_node(env('WHO'), env('USER'), collection_name, collection_version, type='data', node_id=new_src_id)
+    new_src_id, node_info, node_filepath = generate_node(env('WHO'), env('USER'), collection_name, collection_version, type='data', node_id=new_src_id, src_id=src_id, dag=dag)
     save_data(node_filepath, dataframe)
     dag.add_node(src_id, **node_info)
     dag.add_edge(src_id, new_src_id)
@@ -123,24 +123,35 @@ def generate_node_filepath(folder, node_id, type):
 
     return os.path.join(folder, node_id + format)
 
-def generate_node(who, user, collection, collection_version, experiment_number=EXP_NUM, tag=TAG, type='data', folder=DATA_FOLDER, node_id=""):
+def generate_node(who, user, collection, collection_version, experiment_number=EXP_NUM, pipeline_id="", tag=TAG, type='data', folder=DATA_FOLDER, node_id="", src_id="", dag=None):
     if node_id == "":
         node_id = generate_node_id(type, who, user, tag)
     node_filepath = generate_node_filepath(folder, node_id, type)
-    node_info = {
-                'who': who,
-                'user': user,
-                'date': current_date(),
-                'time': current_time(),
-                'collection': collection,
-                'collection_version': collection_version,
-                'experiment_number': experiment_number,
-                'tag': tag,
-                'type': type, # data or model
-                'pipeline_id': "", # comma seperate, global server has 1 id, collab has many id
-                'operation': "", # comma seperate
-                'filepath': node_filepath
-            }
+
+    if src_id == "" and dag is None:
+        node_info = {
+                    'who': who,
+                    'user': user,
+                    'date': current_date(),
+                    'time': current_time(),
+                    'collection': collection,
+                    'collection_version': collection_version,
+                    'experiment_number': experiment_number,
+                    'tag': tag,
+                    'type': type, # data or model
+                    'pipeline_id': pipeline_id, # comma seperate, global server has 1 id, collab has many id
+                    'operation': "", # comma seperate
+                    'filepath': node_filepath
+                }
+    else:
+        print("inherit dag")
+        node_info = dag.get_node_attr(src_id)
+        node_info['date'] = current_date()
+        node_info['time'] = current_time()
+        node_info['tag'] = tag
+        node_info['type'] = type 
+        node_info['operation'] = ""
+        node_info['filepath'] = node_filepath
     
     return node_id, node_info, node_filepath
 
@@ -154,9 +165,10 @@ def build_pipeline(dag, src_id, ops, param_list, x_header=XHEADER,y_header=YHEAD
     data_path = dag.get_node_attr(src_id)['filepath']
     dataframe = pd.read_csv(data_path)
     print("build_pipeline: ", dataframe.head())
-    X = dataframe.drop(y_header,axis=1) # TODO: change header to number or catch exception or record the header change in pipeline (recommand)
-    if('_id' in dataframe.columns):
-        X = X.drop('_id', axis=1)
+
+    X = dataframe.drop(y_header, axis=1, errors="ignore") # TODO: change header to number or catch exception or record the header change in pipeline (recommand)
+    X = X.drop('_id', axis=1, errors="ignore")
+
     y =  dataframe[y_header] # sklearn will drop header after some data transformation
     print('Origin',X)
     pipe_string = parse_pipe_to_string(ops)
@@ -167,7 +179,7 @@ def build_pipeline(dag, src_id, ops, param_list, x_header=XHEADER,y_header=YHEAD
     if (ops[-1][0] == 'model'):
         print('is model')
         node_id, node_info, node_filepath = generate_node(
-            who=WHO, user=USER, collection=COLLECTION, collection_version=COLLECTION_VERSION, experiment_number=EXP_NUM, tag=TAG, type='model', folder=DATA_FOLDER)
+            who=WHO, user=USER, collection=COLLECTION, collection_version=COLLECTION_VERSION, experiment_number=EXP_NUM, tag=TAG, type='model', folder=DATA_FOLDER, src_id=src_id, dag=dag)
         pipe.set_params(**param_list)
         
         save_model(node_filepath, pipe.steps[-1][1].fit(X,y))
@@ -179,13 +191,15 @@ def build_pipeline(dag, src_id, ops, param_list, x_header=XHEADER,y_header=YHEAD
     else:
     
         node_id, node_info, node_filepath = generate_node(
-            who=WHO, user=USER, collection=COLLECTION, collection_version=COLLECTION_VERSION, experiment_number=EXP_NUM, tag=TAG, type='data', folder=DATA_FOLDER)
+            who=WHO, user=USER, collection=COLLECTION, collection_version=COLLECTION_VERSION, experiment_number=EXP_NUM, tag=TAG, type='data', folder=DATA_FOLDER, src_id=src_id, dag=dag)
         
         
         print('is data')
         pipe.set_params(**param_list)
         trans_data = pipe.fit_transform(X,y)
+
         trans_pd_data = pd.DataFrame(trans_data, columns = x_header) # TODO: if columns change, detect and do sth
+
         
         y = pd.DataFrame(y)
         final_data = pd.concat([trans_pd_data,y],axis=1)

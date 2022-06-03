@@ -22,3 +22,6 @@ def current_date():
     t = time.localtime()
     return time.strftime("%Y-%m-%d", t)
     
+
+def comma_str_to_list(s: str) -> list:
+    return s.split(",")
