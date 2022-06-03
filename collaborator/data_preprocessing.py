@@ -20,7 +20,7 @@ def basic_data_transform(df:pd.DataFrame) -> pd.DataFrame:
 
     return df
 
-def long_data_transform(lock, dag:DAG, df:pd.DataFrame, collection_name:str, pipeline_id:str, pipeline:dict) -> pd.DataFrame:
+def long_data_transform(lock, dag:DAG, df:pd.DataFrame, collection_name:str, pipeline_id:str, pipeline:dict, experiment_number:int) -> pd.DataFrame:
     lock.acquire()
     """
     get all data node, compare collection_name
@@ -41,7 +41,7 @@ def long_data_transform(lock, dag:DAG, df:pd.DataFrame, collection_name:str, pip
     # if no exist data with same collection_name:
     if last_data_version == -1:
         new_node_id = "_".join([collection_name, '0'])
-        src_id = build_root_data_node(dag, df, collection_name, new_collection_version , pipeline_id, new_node_id=new_node_id)
+        src_id = build_root_data_node(dag, df, collection_name, new_collection_version, pipeline_id, experiment_number, new_node_id=new_node_id)
 
     # if exist data with same collection_name, find data node, compare two dataset:
     else:
@@ -54,7 +54,7 @@ def long_data_transform(lock, dag:DAG, df:pd.DataFrame, collection_name:str, pip
         # if not same: create data node with collection + surrogate_id
         else:
             new_src_id = "_".join([collection_name, str(last_data_version + 1)]) 
-            src_id = build_child_data_node(dag, df, collection_name, new_collection_version, last_node_id, new_src_id)
+            src_id = build_child_data_node(dag, df, collection_name, new_collection_version, experiment_number, last_node_id, new_src_id)
         
 
     # parse: pipeline dict to real pipline (chung)
@@ -67,10 +67,11 @@ def long_data_transform(lock, dag:DAG, df:pd.DataFrame, collection_name:str, pip
         sub_pipeline_param_list = pipe_param_string[parsed_pipeline.index(sub_pipeline)]
 
         if(parsed_pipeline.index(sub_pipeline) == 0):
-            src_id = build_pipeline(dag, src_id, sub_pipeline, param_list = sub_pipeline_param_list)
+            src_id = build_pipeline(dag, src_id, sub_pipeline, param_list = sub_pipeline_param_list, experiment_number=experiment_number)
         else:
-            src_id = build_pipeline(dag, src_id, sub_pipeline, param_list = sub_pipeline_param_list)
+            src_id = build_pipeline(dag, src_id, sub_pipeline, param_list = sub_pipeline_param_list, experiment_number=experiment_number)
 
+    print(dag.nodes_info)
 
     import time
     for i in range(3):
@@ -94,6 +95,7 @@ def send_result_to_global_server(dag, pipeline_id, df, src_id):
         "dataframe": pickle_encode(df),
         "last_node": src_id
     }
+
 
     
     r = requests.post(url, headers=headers, data=json.dumps(data))
