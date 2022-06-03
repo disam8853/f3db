@@ -66,7 +66,9 @@ class DAG():
                 'type': 'data', # data or model
                 'pipeline_id': "", # comma seperate, global server has 1 id, collab has many id
                 'operation': "", # comma seperate
-                'filepath':'default filepath'
+                'filepath':'default filepath',
+                'x_headers': "", # comma seperate, global server has 1 id, collab has many id -> list of strings
+                'y_headers': "", # 1 string
             }
         
         try:
@@ -178,6 +180,14 @@ class DAG():
     def get_dict_graph(self) -> dict:
         data = json_graph.node_link_data(self.G)
         return data
+
+    def get_subgraph(self, src_id) -> DAG:
+        s = self.G.subgraph(nx.dfs_tree(self.G, src_id="1").nodes())
+        return s
+
+    def get_nodes_with_attributes(self, attribute, value) -> dict:
+        selected_data = dict( (n,d) for n,d in self.G.nodes().items() if d[attribute] == value)
+        return selected_data
 
 if __name__ == "__main__":
     print("\n**** create graph ****")

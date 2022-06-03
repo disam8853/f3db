@@ -1,5 +1,3 @@
-
-from asyncio.windows_events import NULL
 from email import header
 import os
 import pickle

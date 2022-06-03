@@ -66,7 +66,9 @@ class DAG():
                 'type': 'data', # data or model
                 'pipeline_id': "", # comma seperate, global server has 1 id, collab has many id
                 'operation': "", # comma seperate
-                'filepath':'default filepath'
+                'filepath':'default filepath',
+                'x_headers': "", # comma seperate, global server has 1 id, collab has many id -> list of strings
+                'y_headers': "", # 1 string
             }
         
         try:

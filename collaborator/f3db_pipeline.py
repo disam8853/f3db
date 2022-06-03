@@ -149,10 +149,13 @@ def build_pipeline(dag, src_id, ops, param_list, experiment_number=EXP_NUM, tag=
     data_path = dag.get_node_attr(src_id)['filepath']
     dataframe = pd.read_csv(data_path)
     print("build_pipeline: ", dataframe.head())
-    X = dataframe.drop('CV',axis=1) # TODO: change header to number or catch exception or record the header change in pipeline (recommand)
-    X = X.drop('_id', axis=1)
-    y =  dataframe['CV'] # sklearn will drop header after some data transformation
-   
+    X = dataframe.drop('CV',axis=1, errors="ignore") # TODO: change header to number or catch exception or record the header change in pipeline (recommand)
+    X = X.drop('_id', axis=1, errors="ignore")
+    try:
+        y =  dataframe['CV'] # sklearn will drop header after some data transformation
+    except:
+        y = dataframe.iloc[:-1]
+
     pipe_string = parse_pipe_to_string(ops)
     
     pipe = Pipeline(ops)
@@ -179,7 +182,7 @@ def build_pipeline(dag, src_id, ops, param_list, experiment_number=EXP_NUM, tag=
         print('is data')
         pipe.set_params(**param_list)
         trans_data = pipe.fit_transform(X,y)
-        trans_pd_data = pd.DataFrame(trans_data, columns = dataframe.columns) # TODO: if columns change, detect and do sth
+        trans_pd_data = pd.DataFrame(trans_data) # TODO: if columns change, detect and do sth
         
         y = pd.DataFrame(y)
         final_data = pd.concat([trans_pd_data,y],axis=1)
