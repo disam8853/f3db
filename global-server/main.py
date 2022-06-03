@@ -1,3 +1,4 @@
+from imp import load_module
 from flask import Flask, request, abort, Response, jsonify, make_response
 from environs import Env
 from pymongo import MongoClient
@@ -7,10 +8,16 @@ import asyncio
 from merge import merge_pipeline
 from dag import DAG
 import pandas as pd
-from parse import parse, parse_param
+from parse import parse, parse_param, check_fitted
 from f3db_pipeline import build_child_data_node, get_max_surrogate_number, generate_collection_version, compare_collection_version, build_root_data_node, build_pipeline
-
-
+from sklearn.svm import SVC
+from sklearn.decomposition import PCA
+import numpy as np
+from sklearn.linear_model import LinearRegression
+from sklearn.preprocessing import FunctionTransformer, StandardScaler, MinMaxScaler
+from sklearn.pipeline import Pipeline
+import numpy as np
+import joblib
 env = Env()
 env.read_env()
 
@@ -193,6 +200,49 @@ def predict_model(model_id):
 def find_pipeline_by_id(pipeline_id):
     return pipelines_db.find_one({'_id': ObjectId(pipeline_id)}, {"_id": 0})
 
+def transform_and_predict(raw_pipe_data:dict): # TODO: function parameter -> dag, df, model_id, raw_pipe_data:dict
+    df = pd.read_csv('../pressure_test.csv')
+    """
+    1. parse pipeline_dict to sklearn pipeline
+    2. use the pipeline to transform the data
+    3. pipeline.predict(X)
+
+    """
+    clinet_pipeline = parse_client_pipeline(raw_pipe_data)
+    pipe = Pipeline(clinet_pipeline)
+    trans_data = pipe.fit_transform(df)
+
+    data_path = "../dev-container/volumn/global-server/DATA_FOLDER/model_global-server_admin_default-tag_2022-06-03_0.joblib"
+    loaded_model = joblib.load(data_path)
+    result = loaded_model.predict(trans_data)
+    # print('res',result)
+    return result
+
+
+def parse_client_pipeline(raw_pipe_data):
+    sub_pipeline = []
+    ref_list = []
+    if raw_pipe_data == []:
+        return raw_pipe_data
+
+    for character in ['collaborator', 'global-server']:
+        pipe = raw_pipe_data[character]
+        
+        for idx in range(len(pipe)):
+            # print(pipe[idx])
+            if(pipe[idx]['name'] != 'SaveData'):
+                
+                strp = pipe[idx]['name']+'()'
+                if check_fitted(eval(strp)) or (pipe[idx]['name'] in ref_list): 
+                    continue
+                else:
+                    ref_list.append(pipe[idx]['name'])
+                    sub_pipeline.append((pipe[idx]['name'],eval(strp)))
+            else: # SaveData
+                continue
+    return sub_pipeline
+
+
 
 def run_pipeline(dag, src_id, experiment_number):
     data_path = dag.get_node_attr(src_id)['filepath']
@@ -202,7 +252,6 @@ def run_pipeline(dag, src_id, experiment_number):
             {'_id': ObjectId(pipeline_id)}, {"_id": 0})
 
     parsed_pipeline = parse(pipeline, 'global-server')
-    print('chung',parsed_pipeline)
     # do pipeline (chung)
     pipe_param_string = parse_param(pipeline, 'global-server')
     for sub_pipeline in parsed_pipeline:
