@@ -34,24 +34,26 @@ DATA = {}
 def get():
     return 'OK'
 
+
 @app.route("/clear", methods=['GET'])
 def clear_volumn():
     root = "./DATA_FOLDER/"
     filenames = next(os.walk(root), (None, None, []))[2]
     for f in filenames:
         os.remove(os.path.join(root, f))
-    global dag 
+    global dag
     dag = DAG("./DATA_FOLDER/graph.gml.gz")
-    
+
     response = []
     for url in collaborators:
 
-        payload={}
+        payload = {}
         headers = {}
 
-        response.append(requests.request("GET", url+"/clear", headers=headers, data=payload))
+        response.append(requests.request(
+            "GET", url+"/clear", headers=headers, data=payload))
 
-    return jsonify(response = str(response))
+    return jsonify(response=str(response))
 
 
 async def post(url, data, session):
@@ -200,8 +202,8 @@ async def get_pipeline_status(pipeline_id):
     nids = dag.get_nodes_with_condition(cond)
     if len(nids) == 0:
         return Response('there is no model found', 400)
-    # elif len(nids) != 1:
-    #     return Response('multiple models detected!', 500)
+    elif len(nids) != 1:
+        return Response('multiple models detected!', 500)
 
     return jsonify(model_id=nids[-1])
 
