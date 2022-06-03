@@ -13,7 +13,7 @@ COLLECTION_VERSION = 0
 EXP_NUM = 0
 
 
-def merge_pipeline(global_dag: DAG, collaborator_data: list, global_pipeline_id: str, experiment_number: int, collection: str) -> None:
+def merge_pipeline(global_dag: DAG, collaborator_data: list, global_pipeline_id: str, experiment_number: int, collection: str) -> str:
     """
     1. get all collaborator post request data
     2. merge dag and dataframe
@@ -64,4 +64,4 @@ def merge_pipeline(global_dag: DAG, collaborator_data: list, global_pipeline_id:
     save_data(global_node_filepath, global_df)
     print(global_dag.get_node_attr(global_node_id))
 
-    return None
+    return global_node_id
