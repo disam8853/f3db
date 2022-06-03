@@ -177,11 +177,17 @@ async def get_pipeline_status(pipeline_id):
 def predict_model(model_id):
     data = request.json
 
-    for attr in []:
+    for attr in ['dataframe', 'pipeline_id']:
         if attr not in data:
             return Response(f'Must provide correct {attr}!', 400)
 
-    return 'ok'
+    df = data['dataframe']
+    pipeline_id = data['pipeline_id']
+    pipeline = find_pipeline_by_id(pipeline_id)
+
+    result = transform_and_predict(dag, df, model_id, pipeline)
+
+    return result
 
 
 def find_pipeline_by_id(pipeline_id):
