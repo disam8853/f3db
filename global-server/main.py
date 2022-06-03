@@ -154,9 +154,9 @@ def merge_pipeline_api():
         try:
             experiment_number = WAITING_PIPELINE[pipeline_id]['experiment_number']
             collection = WAITING_PIPELINE[pipeline_id]['collection']
-            src_id= merge_pipeline(dag, DATA[pipeline_id],
-                           pipeline_id, experiment_number, collection)
-            model_id = run_pipeline(dag,src_id,experiment_number)
+            src_id = merge_pipeline(dag, DATA[pipeline_id],
+                                    pipeline_id, experiment_number, collection)
+            model_id = run_pipeline(dag, src_id, experiment_number)
         except Exception as e:
             return Response('Merge failed.\n' + str(e), 400)
         del WAITING_PIPELINE[pipeline_id]
@@ -206,19 +206,17 @@ def find_pipeline_by_id(pipeline_id):
 
 
 def run_pipeline(dag, src_id, experiment_number):
-    data_path = dag.get_node_attr(src_id)['filepath']
-    dataframe = pd.read_csv(data_path)
     pipeline_id = dag.get_node_attr(src_id)['pipeline_id']
-    pipeline = pipelines_db.find_one(
-            {'_id': ObjectId(pipeline_id)}, {"_id": 0})
+    pipeline = find_pipeline_by_id(pipeline_id)
 
     parsed_pipeline = parse(pipeline, 'global-server')
-    print('chung',parsed_pipeline)
     # do pipeline (chung)
     pipe_param_string = parse_param(pipeline, 'global-server')
     for sub_pipeline in parsed_pipeline:
-        sub_pipeline_param_list = pipe_param_string[parsed_pipeline.index(sub_pipeline)]
-        src_id = build_pipeline(dag, src_id, sub_pipeline, param_list=sub_pipeline_param_list, experiment_number=experiment_number)
+        sub_pipeline_param_list = pipe_param_string[parsed_pipeline.index(
+            sub_pipeline)]
+        src_id = build_pipeline(
+            dag, src_id, sub_pipeline, param_list=sub_pipeline_param_list, experiment_number=experiment_number)
 
     return src_id
 
