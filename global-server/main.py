@@ -112,7 +112,7 @@ async def train_model():
 
 
 @app.route('/pipeline/merge', methods=['POST'])
-def merge_pipeline():
+def merge_pipeline_api():
     data = request.json
 
     for attr in ['pipeline_id', 'dataframe', 'dag_json']:
@@ -143,9 +143,8 @@ def merge_pipeline():
 
     if len(WAITING_PIPELINE[pipeline_id]['collaborators']) == 0:
         try:
-            merge_pipeline(
-                dag, data=DATA[pipeline_id], pipeline_id=pipeline_id)
-            model_id = run_pipeline(dag=dag)
+            merge_pipeline(dag, DATA[pipeline_id], pipeline_id)
+            model_id = run_pipeline(dag)
         except Exception as e:
             return Response('Merge failed.\n' + str(e), 400)
         del WAITING_PIPELINE[pipeline_id]
