@@ -44,6 +44,7 @@ def merge_pipeline(global_dag: DAG, collaborator_data: list, global_pipeline_id:
             colab_pipeline_id = data['pipeline_id']
             colab_dag = DAG(data['dag_json'])
             colab_df = pickle_decode(data['dataframe'])
+            colab_dag_leaf = data['']
 
             # TODO: check collaborator dag
             
@@ -52,7 +53,7 @@ def merge_pipeline(global_dag: DAG, collaborator_data: list, global_pipeline_id:
 
             # find last colab_data_node by colab_pipeline_id
             colab_node_id = colab_dag.get_nodes_with_attributes("pipeline_id", colab_pipeline_id)
-            print(colab_node_id)
+\
             
             # merge global_dag & colab_dag
             global_dag.dag_compose(colab_dag.G)

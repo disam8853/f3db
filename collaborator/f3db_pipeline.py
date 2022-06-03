@@ -123,9 +123,10 @@ def generate_node_filepath(folder, node_id, type):
 
     return os.path.join(folder, node_id + format)
 
-def generate_node(who, user, collection, collection_version, experiment_number=EXP_NUM, pipeline_id="", tag=TAG, type='data', folder=DATA_FOLDER, node_id="", src_id="", dag=None):
+def generate_node(who, user, collection="", collection_version="", experiment_number=EXP_NUM, pipeline_id="", tag=TAG, type='data', folder=DATA_FOLDER, node_id="", src_id="", dag=None):
     if node_id == "":
         node_id = generate_node_id(type, who, user, tag)
+
     node_filepath = generate_node_filepath(folder, node_id, type)
 
     if src_id == "" and dag is None:
@@ -177,7 +178,7 @@ def build_pipeline(dag, src_id, ops, param_list, x_header,y_header,experiment_nu
     if (ops[-1][0] == 'model'):
         print('is model')
         node_id, node_info, node_filepath = generate_node(
-            who=WHO, user=USER, collection=COLLECTION, collection_version=COLLECTION_VERSION, experiment_number=EXP_NUM, tag=TAG, type='model', folder=DATA_FOLDER, src_id=src_id, dag=dag)
+            who=env('WHO'), user=env('USER'), experiment_number=EXP_NUM, tag=TAG, type='model', src_id=src_id, dag=dag)
         pipe.set_params(**param_list)
         
         save_model(node_filepath, pipe.steps[-1][1].fit(X,y))
@@ -189,7 +190,7 @@ def build_pipeline(dag, src_id, ops, param_list, x_header,y_header,experiment_nu
     else:
     
         node_id, node_info, node_filepath = generate_node(
-            who=WHO, user=USER, collection=COLLECTION, collection_version=COLLECTION_VERSION, experiment_number=EXP_NUM, tag=TAG, type='data', folder=DATA_FOLDER, src_id=src_id, dag=dag)
+            who=env('WHO'), user=env('USER'), experiment_number=EXP_NUM, tag=TAG, type='data', src_id=src_id, dag=dag)
         
         
         print('is data')
