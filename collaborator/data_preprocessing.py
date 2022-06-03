@@ -72,25 +72,30 @@ def long_data_transform(lock, dag:DAG, df:pd.DataFrame, collection_name:str, pip
             src_id = build_pipeline(dag, src_id, sub_pipeline, param_list = sub_pipeline_param_list)
 
 
-    print(dag.nodes)
-    print(dag.roots)
-    print(dag.leaves)
-
     import time
     for i in range(3):
         print(i)
         time.sleep(1)
+
+    send_result_to_global_server(dag, pipeline_id, df, src_id)
+
+    lock.release()
+
+    return 
+
+
+def send_result_to_global_server(dag, pipeline_id, df, src_id):
     # send pipeline_id, json dag, dataframe to global-server
     url = f'{GLOBAL_SERVER_URL}/pipeline/merge'
     headers = {'Content-type': 'application/json', 'Accept': 'text/plain'}
     data = {
         "pipeline_id": pipeline_id,
         "dag_json": dag.get_dict_graph(),
-        "dataframe": pickle_encode(df)
+        "dataframe": pickle_encode(df),
+        "last_node": src_id
     }
 
     
     r = requests.post(url, headers=headers, data=json.dumps(data))
     print("response: ", r.text)
-    lock.release()
-    return 
+    
