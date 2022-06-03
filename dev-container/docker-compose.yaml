@@ -37,6 +37,7 @@ services:
       - USER=admin
       - PYTHONUNBUFFERED=1
       - DATA_FOLDER=./DATA_FOLDER/
+      - db_name=f3db
   collaborator2:
     container_name: collaborator2
     build: ../collaborator
@@ -56,6 +57,7 @@ services:
       - USER=admin
       - PYTHONUNBUFFERED=1
       - DATA_FOLDER=./DATA_FOLDER/
+      - db_name=f3db
   mongo-global:
     image: mongo
     volumes:
