@@ -1,6 +1,6 @@
-from imp import load_module
 from flask import Flask, request, abort, Response, jsonify, make_response
 from environs import Env
+import pandas as pd
 from pymongo import MongoClient
 from bson.objectid import ObjectId
 import aiohttp
@@ -18,6 +18,9 @@ from sklearn.preprocessing import FunctionTransformer, StandardScaler, MinMaxSca
 from sklearn.pipeline import Pipeline
 import numpy as np
 import joblib
+import os
+import requests
+
 env = Env()
 env.read_env()
 
@@ -37,6 +40,27 @@ DATA = {}
 @app.route("/", methods=['GET'])
 def get():
     return 'OK'
+
+
+@app.route("/clear", methods=['GET'])
+def clear_volumn():
+    root = "./DATA_FOLDER/"
+    filenames = next(os.walk(root), (None, None, []))[2]
+    for f in filenames:
+        os.remove(os.path.join(root, f))
+    global dag
+    dag = DAG("./DATA_FOLDER/graph.gml.gz")
+
+    response = []
+    for url in collaborators:
+
+        payload = {}
+        headers = {}
+
+        response.append(requests.request(
+            "GET", url+"/clear", headers=headers, data=payload))
+
+    return jsonify(response=str(response))
 
 
 async def post(url, data, session):
@@ -83,6 +107,8 @@ async def create_pipeline():
 async def get_pipeline(pipeline_id):
     try:
         pipeline = find_pipeline_by_id(pipeline_id)
+        if pipeline is None:
+            return Response('pipeline not found', 404)
     except Exception:
         return Response('Failed to get pipeline!', 400)
 
@@ -158,9 +184,9 @@ def merge_pipeline_api():
         try:
             experiment_number = WAITING_PIPELINE[pipeline_id]['experiment_number']
             collection = WAITING_PIPELINE[pipeline_id]['collection']
-            src_id= merge_pipeline(dag, DATA[pipeline_id],
-                           pipeline_id, experiment_number, collection)
-            model_id = run_pipeline(dag,src_id,experiment_number)
+            src_id = merge_pipeline(dag, DATA[pipeline_id],
+                                    pipeline_id, experiment_number, collection)
+            model_id = run_pipeline(dag, src_id, experiment_number)
         except Exception as e:
             return Response('Merge failed.\n' + str(e), 400)
         del WAITING_PIPELINE[pipeline_id]
@@ -174,27 +200,42 @@ def merge_pipeline_api():
 @app.route('/pipeline/<pipeline_id>/status', methods=['GET'])
 async def get_pipeline_status(pipeline_id):
     experiment_number = request.args.get('experiment_number')
-    if experiment_number is None:
-        return Response(f'Must provide correct experiment_number in query parameter!', 400)
+    collection = request.args.get('collection')
+    for attr in [experiment_number, collection]:
+        if attr is None:
+            return Response(f'Must provide correct {attr} in query parameter!', 400)
+    cond = [("collection", collection), ("experiment_number",
+                                         int(experiment_number)), ("pipeline_id", pipeline_id), ("type", "model")]
+    nids = dag.get_nodes_with_condition(cond)
+    if len(nids) == 0:
+        return Response('there is no model found', 400)
+    elif len(nids) != 1:
+        return Response('multiple models detected!', 500)
 
-    return jsonify(pipeline_id=pipeline_id, experiment_number=experiment_number)
+    return jsonify(model_id=nids[-1])
 
 
-@app.route('/model/:model_id/predict', methods=['POST'])
+@app.route('/model/<model_id>/predict', methods=['POST'])
 def predict_model(model_id):
     data = request.json
 
-    for attr in ['dataframe', 'pipeline_id']:
+    for attr in ['data', 'pipeline_id']:
         if attr not in data:
             return Response(f'Must provide correct {attr}!', 400)
 
-    df = data['dataframe']
+    row_data = data['data']
     pipeline_id = data['pipeline_id']
-    pipeline = find_pipeline_by_id(pipeline_id)
+    try:
+        pipeline = find_pipeline_by_id(pipeline_id)
+        if pipeline is None:
+            return Response('pipeline not found', 404)
+    except Exception:
+        return Response('pipeline not found', 404)
+    df = pd.DataFrame.from_dict(row_data)
 
     result = transform_and_predict(dag, df, model_id, pipeline)
 
-    return result
+    return jsonify(result)
 
 
 def find_pipeline_by_id(pipeline_id):
@@ -245,18 +286,17 @@ def parse_client_pipeline(raw_pipe_data):
 
 
 def run_pipeline(dag, src_id, experiment_number):
-    data_path = dag.get_node_attr(src_id)['filepath']
-    dataframe = pd.read_csv(data_path)
     pipeline_id = dag.get_node_attr(src_id)['pipeline_id']
-    pipeline = pipelines_db.find_one(
-            {'_id': ObjectId(pipeline_id)}, {"_id": 0})
+    pipeline = find_pipeline_by_id(pipeline_id)
 
     parsed_pipeline = parse(pipeline, 'global-server')
     # do pipeline (chung)
     pipe_param_string = parse_param(pipeline, 'global-server')
     for sub_pipeline in parsed_pipeline:
-        sub_pipeline_param_list = pipe_param_string[parsed_pipeline.index(sub_pipeline)]
-        src_id = build_pipeline(dag, src_id, sub_pipeline, param_list=sub_pipeline_param_list, experiment_number=experiment_number)
+        sub_pipeline_param_list = pipe_param_string[parsed_pipeline.index(
+            sub_pipeline)]
+        src_id = build_pipeline(
+            dag, src_id, sub_pipeline, param_list=sub_pipeline_param_list, experiment_number=experiment_number)
 
     return src_id
 

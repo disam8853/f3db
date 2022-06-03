@@ -109,9 +109,9 @@ def get_max_surrogate_number(path, prefix) -> int:
     return max(version_nums)
     
 
-def generate_node_id(type="", who="", user="", tag="") -> str:
+def generate_node_id(type="", who="", user="", tag="", experiment_number="") -> str:
     date = current_date()
-    node_id = '_'.join([type, who, user, tag, date])
+    node_id = '_'.join([type, who, user, date, experiment_number])
     version_num = "_" + str(get_max_surrogate_number(DATA_FOLDER, node_id) + 1)
     node_id += version_num
     return node_id
@@ -127,7 +127,7 @@ def generate_node_filepath(folder, node_id, type):
 
 def generate_node(who, user, collection="", collection_version="", experiment_number=EXP_NUM, pipeline_id="", tag=TAG, type='data', folder=DATA_FOLDER, node_id="", src_id="", dag=None):
     if node_id == "":
-        node_id = generate_node_id(type, who, user, tag)
+        node_id = generate_node_id(type, who, user, tag, experiment_number)
 
     node_filepath = generate_node_filepath(folder, node_id, type)
 
@@ -164,6 +164,7 @@ XHEADER =  ['AGE','HBP_d_all_systolic', 'HBP_d_AM_systolic',
        'HBP_d_PM_diastolic', 'HBP_d_systolic_D1_AM1', 'HBP_d_systolic_D1_AM2',
        'aspirin']
 YHEADER = 'CV'
+
 def build_pipeline(dag, src_id, ops, param_list, x_header=XHEADER,y_header=YHEADER,experiment_number=EXP_NUM, tag=TAG):
 
     data_path = dag.get_node_attr(src_id)['filepath']
@@ -209,7 +210,6 @@ def build_pipeline(dag, src_id, ops, param_list, x_header=XHEADER,y_header=YHEAD
         pipe.set_params(**param_list)
         trans_data = pipe.fit_transform(X,y)
         trans_pd_data = pd.DataFrame(trans_data, columns = x_header) # TODO: if columns change, detect and do sth
-
         
         y = pd.DataFrame(y)
         final_data = pd.concat([trans_pd_data,y],axis=1)

@@ -41,13 +41,13 @@ def long_data_transform(lock, dag: DAG, df: pd.DataFrame, collection_name: str, 
     new_collection_version = generate_collection_version(df)
     # if no exist data with same collection_name:
     if last_data_version == -1:
-        new_node_id = "_".join([collection_name, '0'])
+        new_node_id = "_".join(['root', collection_name, env('WHO'), '0'])
         src_id = build_root_data_node(dag, df, collection_name, new_collection_version,
                                       pipeline_id, experiment_number, new_node_id=new_node_id)
 
     # if exist data with same collection_name, find data node, compare two dataset:
     else:
-        last_node_id = "_".join([collection_name, str(last_data_version)])
+        last_node_id = "_".join(['root', collection_name, env('WHO'), str(last_data_version)])
         last_node = dag.get_node_attr(last_node_id)
         last_collection_version = last_node['collection_version']
         # if same: get src_id

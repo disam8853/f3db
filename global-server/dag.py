@@ -26,9 +26,9 @@ class DAG():
         def wrapper(self, *args, **kwargs):
             output = func(self, *args, **kwargs)
             self.roots = [n for n,d in self.G.in_degree() if d==0]
-            self.nodes = self.G.nodes()
+            self.nodes = list(self.G.nodes())
             self.leaves = [n for n in self.G.nodes() if self.G.out_degree(n)==0 and self.G.in_degree(n)>=1]
-            self.nodes_info = self.G.nodes(data=True)
+            self.nodes_info = dict(self.G.nodes(data=True))
             self.number_of_edges = nx.number_of_edges(self.G)
             self.number_of_nodes = nx.number_of_nodes(self.G)
             self.type = type(self.G)
@@ -195,16 +195,31 @@ class DAG():
         selected_data = [ n for n,d in self.G.nodes().items() if ((d[a1] == v1) and (d[a2] == v2))]
         return selected_data
 
-    def get_max_attribute_node(self, node_id_list, attribtue) -> DAG:
+    def get_nodes_with_condition(self, condition) -> list:
+        # condition = [("who", 'global-server'), ("user", 'bobo'), ("collection_version", 3)] 
+        def check(n, d, con):
+            for attr, val in con:
+                if d[attr] != val:
+                    return []
+            return [n]
+        
+        node_list = []
+        for n, d in self.G.nodes().items():
+            node_list += check(n, d, condition)
+
+        return node_list
+
+    def get_max_attribute_node(self, node_id_list, attribute) -> DAG:
 
         max_attribute = 0
         for node_id in node_id_list:
             node = self.get_node_attr(node_id)
-            attr_value = node[attribtue]
+            attr_value = node[attribute]
             if attr_value > max_attribute:
                 max_attribute = attr_value
 
         return max_attribute
+
 
             
 
