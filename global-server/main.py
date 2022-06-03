@@ -7,6 +7,10 @@ import aiohttp
 import asyncio
 from merge import merge_pipeline
 from dag import DAG
+import pandas as pd
+from parse import parse, parse_param
+from f3db_pipeline import build_child_data_node, get_max_surrogate_number, generate_collection_version, compare_collection_version, build_root_data_node, build_pipeline
+
 
 env = Env()
 env.read_env()
@@ -150,9 +154,9 @@ def merge_pipeline_api():
         try:
             experiment_number = WAITING_PIPELINE[pipeline_id]['experiment_number']
             collection = WAITING_PIPELINE[pipeline_id]['collection']
-            merge_pipeline(dag, DATA[pipeline_id],
+            src_id= merge_pipeline(dag, DATA[pipeline_id],
                            pipeline_id, experiment_number, collection)
-            model_id = run_pipeline(dag)
+            model_id = run_pipeline(dag,src_id,experiment_number)
         except Exception as e:
             return Response('Merge failed.\n' + str(e), 400)
         del WAITING_PIPELINE[pipeline_id]
@@ -201,8 +205,22 @@ def find_pipeline_by_id(pipeline_id):
     return pipelines_db.find_one({'_id': ObjectId(pipeline_id)}, {"_id": 0})
 
 
-def run_pipeline(dag):
-    return 12
+def run_pipeline(dag, src_id, experiment_number):
+    data_path = dag.get_node_attr(src_id)['filepath']
+    dataframe = pd.read_csv(data_path)
+    pipeline_id = dag.get_node_attr(src_id)['pipeline_id']
+    pipeline = pipelines_db.find_one(
+            {'_id': ObjectId(pipeline_id)}, {"_id": 0})
+
+    parsed_pipeline = parse(pipeline, 'global-server')
+    print('chung',parsed_pipeline)
+    # do pipeline (chung)
+    pipe_param_string = parse_param(pipeline, 'global-server')
+    for sub_pipeline in parsed_pipeline:
+        sub_pipeline_param_list = pipe_param_string[parsed_pipeline.index(sub_pipeline)]
+        src_id = build_pipeline(dag, src_id, sub_pipeline, param_list=sub_pipeline_param_list, experiment_number=experiment_number)
+
+    return src_id
 
 
 def find_greatest_exp_num(dag, pipeline_id, collection):
