@@ -88,9 +88,10 @@ async def train_model():
 
     pipeline_id = data['pipeline_id']
     # get newest experiment number
-    experiment_number = 1
+    experiment_number = find_greatest_exp_num(
+        dag, pipeline_id, data['collection']) + 1
     if pipeline_id in WAITING_PIPELINE:
-        return make_response(jsonify(error=f'Pipeline {pipeline_id} has started fitting.', pipeline_id=pipeline_id, experiment_number=experiment_number), 400)
+        return make_response(jsonify(error=f'Pipeline {pipeline_id} has started fitting.', pipeline=WAITING_PIPELINE[pipeline_id]), 400)
 
     try:
         pipeline = find_pipeline_by_id(pipeline_id)
@@ -100,7 +101,7 @@ async def train_model():
 
     try:
         async with aiohttp.ClientSession() as session:
-            await asyncio.gather(*[post(f'{col["address"]}/data/process', {**request.json, "pipeline_id": col['id']}, session) for col in collaborator_pipieline_ids])
+            await asyncio.gather(*[post(f'{col["address"]}/data/process', {**request.json, "pipeline_id": col['id'], "experiment_number": experiment_number}, session) for col in collaborator_pipieline_ids])
     except Exception:
         return Response('Request a train failed!', 500)
 
@@ -181,3 +182,9 @@ def find_pipeline_by_id(pipeline_id):
 
 def run_pipeline(dag):
     return 12
+
+
+def find_greatest_exp_num(dag, pipeline_id, collection):
+    nids = dag.get_nodes_with_two_attributes(
+        'pipeline_id', pipeline_id, 'collection', collection)
+    return dag.get_max_attribute_node(nids, 'experiment_number')
