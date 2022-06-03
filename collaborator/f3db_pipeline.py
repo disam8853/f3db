@@ -156,17 +156,19 @@ def generate_node(who, user, collection, collection_version, experiment_number=E
     return node_id, node_info, node_filepath
 
 
-def build_pipeline(dag, src_id, ops, param_list, experiment_number=EXP_NUM, tag=TAG):
+def build_pipeline(dag, src_id, ops, param_list, x_header,y_header,experiment_number=EXP_NUM, tag=TAG):
+    x_header = ['AGE','HBP_d_all_systolic', 'HBP_d_AM_systolic',
+       'HBP_d_PM_systolic', 'HBP_d_all_diastolic', 'HBP_d_AM_diastolic',
+       'HBP_d_PM_diastolic', 'HBP_d_systolic_D1_AM1', 'HBP_d_systolic_D1_AM2',
+       'aspirin']
+    y_header = 'CV'
     data_path = dag.get_node_attr(src_id)['filepath']
     dataframe = pd.read_csv(data_path)
     print("build_pipeline: ", dataframe.head())
-    X = dataframe.drop('CV',axis=1, errors="ignore") # TODO: change header to number or catch exception or record the header change in pipeline (recommand)
+    X = dataframe.drop(y_header, axis=1, errors="ignore") # TODO: change header to number or catch exception or record the header change in pipeline (recommand)
     X = X.drop('_id', axis=1, errors="ignore")
-    try:
-        y =  dataframe['CV'] # sklearn will drop header after some data transformation
-    except:
-        y = dataframe.iloc[:-1]
-
+    y =  dataframe[y_header] # sklearn will drop header after some data transformation
+   
     pipe_string = parse_pipe_to_string(ops)
     
     pipe = Pipeline(ops)
@@ -197,7 +199,7 @@ def build_pipeline(dag, src_id, ops, param_list, experiment_number=EXP_NUM, tag=
         
         y = pd.DataFrame(y)
         final_data = pd.concat([trans_pd_data,y],axis=1)
-        final_data.columns = [np.arange(0,final_data.shape[1])]
+        final_data.columns = x_header.append(y_header)
         
         print(final_data.head())
         save_data(node_filepath, final_data)

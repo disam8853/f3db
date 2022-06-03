@@ -155,6 +155,26 @@ def merge_pipeline_api():
     return jsonify(collaborators=pipeline['collaborator_pipieline_ids'])
 
 
+@app.route('/pipeline/<pipeline_id>/status', methods=['GET'])
+async def get_pipeline_status(pipeline_id):
+    experiment_number = request.args.get('experiment_number')
+    if experiment_number is None:
+        return Response(f'Must provide correct experiment_number in query parameter!', 400)
+
+    return jsonify(pipeline_id=pipeline_id, experiment_number=experiment_number)
+
+
+@app.route('/model/:model_id/predict', methods=['POST'])
+def predict_model(model_id):
+    data = request.json
+
+    for attr in []:
+        if attr not in data:
+            return Response(f'Must provide correct {attr}!', 400)
+
+    return 'ok'
+
+
 def find_pipeline_by_id(pipeline_id):
     return pipelines_db.find_one({'_id': ObjectId(pipeline_id)}, {"_id": 0})
 
