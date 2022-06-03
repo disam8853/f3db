@@ -168,9 +168,8 @@ YHEADER = 'CV'
 def build_pipeline(dag, src_id, ops, param_list, x_header=XHEADER,y_header=YHEADER,experiment_number=EXP_NUM, tag=TAG):
 
     data_path = dag.get_node_attr(src_id)['filepath']
-    dataframe = pd.read_csv(data_path)
+    dataframe = pd.read_csv(data_path).fillna(0)
     print("build_pipeline: ", dataframe.head())
-
     X = dataframe.drop(y_header, axis=1, errors="ignore") # TODO: change header to number or catch exception or record the header change in pipeline (recommand)
     X = X.drop('_id', axis=1, errors="ignore")
 
