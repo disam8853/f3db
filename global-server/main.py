@@ -195,8 +195,15 @@ async def get_pipeline_status(pipeline_id):
     for attr in [experiment_number, collection]:
         if attr is None:
             return Response(f'Must provide correct {attr} in query parameter!', 400)
+    cond = [("collection", collection), ("experiment_number",
+                                         int(experiment_number)), ("pipeline_id", pipeline_id), ("type", "model")]
+    nids = dag.get_nodes_with_condition(cond)
+    if len(nids) == 0:
+        return Response('there is no model found', 400)
+    # elif len(nids) != 1:
+    #     return Response('multiple models detected!', 500)
 
-    return jsonify(pipeline_id=pipeline_id, experiment_number=experiment_number)
+    return jsonify(model_id=nids[-1])
 
 
 @app.route('/model/<model_id>/predict', methods=['POST'])
