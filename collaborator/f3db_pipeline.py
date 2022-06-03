@@ -116,9 +116,10 @@ def generate_node_id(type="", who="", user="", tag="") -> str:
     return node_id
 
 def generate_node_filepath(folder, node_id, type):
+    print(type)
     if type == "model":
         format = '.joblib'
-    if type == "data":
+    else:
         format = '.csv'
 
     return os.path.join(folder, node_id + format)
