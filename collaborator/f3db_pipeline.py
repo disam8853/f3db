@@ -144,20 +144,21 @@ def generate_node(who, user, collection, collection_version, experiment_number=E
     
     return node_id, node_info, node_filepath
 
-
-def build_pipeline(dag, src_id, ops, param_list, x_header,y_header,experiment_number=EXP_NUM, tag=TAG):
-    x_header = ['AGE','HBP_d_all_systolic', 'HBP_d_AM_systolic',
+XHEADER =  ['AGE','HBP_d_all_systolic', 'HBP_d_AM_systolic',
        'HBP_d_PM_systolic', 'HBP_d_all_diastolic', 'HBP_d_AM_diastolic',
        'HBP_d_PM_diastolic', 'HBP_d_systolic_D1_AM1', 'HBP_d_systolic_D1_AM2',
        'aspirin']
-    y_header = 'CV'
+YHEADER = 'CV'
+def build_pipeline(dag, src_id, ops, param_list, x_header=XHEADER,y_header=YHEADER,experiment_number=EXP_NUM, tag=TAG):
+
     data_path = dag.get_node_attr(src_id)['filepath']
     dataframe = pd.read_csv(data_path)
     print("build_pipeline: ", dataframe.head())
     X = dataframe.drop(y_header,axis=1) # TODO: change header to number or catch exception or record the header change in pipeline (recommand)
-    X = X.drop('_id', axis=1)
+    if('_id' in dataframe.columns):
+        X = X.drop('_id', axis=1)
     y =  dataframe[y_header] # sklearn will drop header after some data transformation
-   
+    print('Origin',X)
     pipe_string = parse_pipe_to_string(ops)
     
     pipe = Pipeline(ops)
@@ -184,13 +185,14 @@ def build_pipeline(dag, src_id, ops, param_list, x_header,y_header,experiment_nu
         print('is data')
         pipe.set_params(**param_list)
         trans_data = pipe.fit_transform(X,y)
-        trans_pd_data = pd.DataFrame(trans_data, columns = dataframe.columns) # TODO: if columns change, detect and do sth
+        trans_pd_data = pd.DataFrame(trans_data, columns = x_header) # TODO: if columns change, detect and do sth
         
         y = pd.DataFrame(y)
         final_data = pd.concat([trans_pd_data,y],axis=1)
-        final_data.columns = x_header.append(y_header)
+        # print(final_data.shape)
+        # final_data.columns = x_header.append(y_header)
         
-        print(final_data.head())
+        print('after transform',final_data)
         save_data(node_filepath, final_data)
         dag.add_node(node_id, **node_info)
         dag.add_edge(src_id, node_id)
