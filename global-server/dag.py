@@ -187,9 +187,27 @@ class DAG():
         s = self.G.subgraph(nx.dfs_tree(self.G, src_id="1").nodes())
         return s
 
-    def get_nodes_with_attributes(self, attribute, value) -> dict:
-        selected_data = dict( (n,d) for n,d in self.G.nodes().items() if d[attribute] == value)
+    def get_nodes_with_attributes(self, attribute, value) -> list:
+        selected_data = [ n for n,d in self.G.nodes().items() if d[attribute] == value]
         return selected_data
+
+    def get_nodes_with_two_attributes(self, a1, v1, a2, v2) -> list:
+        selected_data = [ n for n,d in self.G.nodes().items() if ((d[a1] == v1) and (d[a2] == v2))]
+        return selected_data
+
+    def get_max_attribute_node(self, node_id_list, attribtue) -> DAG:
+
+        max_attribute = 0
+        for node_id in node_id_list:
+            node = self.get_node_attr(node_id)
+            attr_value = node[attribtue]
+            if attr_value > max_attribute:
+                max_attribute = attr_value
+
+        return max_attribute
+
+            
+
 
 
 
