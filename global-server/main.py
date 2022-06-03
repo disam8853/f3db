@@ -1,5 +1,6 @@
 from flask import Flask, request, abort, Response, jsonify, make_response
 from environs import Env
+import pandas as pd
 from pymongo import MongoClient
 from bson.objectid import ObjectId
 import aiohttp
@@ -72,6 +73,8 @@ async def create_pipeline():
 async def get_pipeline(pipeline_id):
     try:
         pipeline = find_pipeline_by_id(pipeline_id)
+        if pipeline is None:
+            return Response('pipeline not found', 404)
     except Exception:
         return Response('Failed to get pipeline!', 400)
 
@@ -163,27 +166,35 @@ def merge_pipeline_api():
 @app.route('/pipeline/<pipeline_id>/status', methods=['GET'])
 async def get_pipeline_status(pipeline_id):
     experiment_number = request.args.get('experiment_number')
-    if experiment_number is None:
-        return Response(f'Must provide correct experiment_number in query parameter!', 400)
+    collection = request.args.get('collection')
+    for attr in [experiment_number, collection]:
+        if attr is None:
+            return Response(f'Must provide correct {attr} in query parameter!', 400)
 
     return jsonify(pipeline_id=pipeline_id, experiment_number=experiment_number)
 
 
-@app.route('/model/:model_id/predict', methods=['POST'])
+@app.route('/model/<model_id>/predict', methods=['POST'])
 def predict_model(model_id):
     data = request.json
 
-    for attr in ['dataframe', 'pipeline_id']:
+    for attr in ['data', 'pipeline_id']:
         if attr not in data:
             return Response(f'Must provide correct {attr}!', 400)
 
-    df = data['dataframe']
+    row_data = data['data']
     pipeline_id = data['pipeline_id']
-    pipeline = find_pipeline_by_id(pipeline_id)
+    try:
+        pipeline = find_pipeline_by_id(pipeline_id)
+        if pipeline is None:
+            return Response('pipeline not found', 404)
+    except Exception:
+        return Response('pipeline not found', 404)
+    df = pd.DataFrame.from_dict(row_data)
 
     result = transform_and_predict(dag, df, model_id, pipeline)
 
-    return result
+    return jsonify(result)
 
 
 def find_pipeline_by_id(pipeline_id):
