@@ -164,6 +164,7 @@ XHEADER =  ['AGE','HBP_d_all_systolic', 'HBP_d_AM_systolic',
        'HBP_d_PM_diastolic', 'HBP_d_systolic_D1_AM1', 'HBP_d_systolic_D1_AM2',
        'aspirin']
 YHEADER = 'CV'
+
 def build_pipeline(dag, src_id, ops, param_list, x_header=XHEADER,y_header=YHEADER,experiment_number=EXP_NUM, tag=TAG):
 
     data_path = dag.get_node_attr(src_id)['filepath']
@@ -201,9 +202,8 @@ def build_pipeline(dag, src_id, ops, param_list, x_header=XHEADER,y_header=YHEAD
         print('is data')
         pipe.set_params(**param_list)
         trans_data = pipe.fit_transform(X,y)
-
+        
         trans_pd_data = pd.DataFrame(trans_data, columns = x_header) # TODO: if columns change, detect and do sth
-
         
         y = pd.DataFrame(y)
         final_data = pd.concat([trans_pd_data,y],axis=1)

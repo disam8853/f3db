@@ -6,6 +6,7 @@ import aiohttp
 import asyncio
 from merge import merge_pipeline
 from dag import DAG
+from parse import pares
 
 env = Env()
 env.read_env()
@@ -188,6 +189,16 @@ def predict_model(model_id):
 
 def find_pipeline_by_id(pipeline_id):
     return pipelines_db.find_one({'_id': ObjectId(pipeline_id)}, {"_id": 0})
+
+
+def transform_and_predict(dag, df, model_id, raw_pipe_data:dict):
+    """
+    1. parse pipeline_dict to sklearn pipeline
+    2. use the pipeline to transform the data
+    3. pipeline.predict(X)
+    """
+    
+
 
 
 def run_pipeline(dag):

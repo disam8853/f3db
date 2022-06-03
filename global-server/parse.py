@@ -12,11 +12,13 @@ def read_raw_pipe():
         data = json.load(f)
         # print(data)
         return data
+
 def check_fitted(clf): 
     X = np.array([[-1, -1], [-2, -1], [1, 1], [2, 1]])
     y = np.array([1, 1, 2, 2])
     print(clf,hasattr(clf, "predict"))
     return hasattr(clf, "predict")
+
 def parse(raw_pipe_data, character):
     final_pipeline = []
     param_pipeline = []
@@ -36,8 +38,7 @@ def parse(raw_pipe_data, character):
         else:
             final_pipeline.append(sub_pipeline)
             final_pipeline.append(pipe[idx]['name'])
-            sub_pipeline = []
-            
+            sub_pipeline = []      
 
     final_pipeline.append(sub_pipeline)
     return final_pipeline
