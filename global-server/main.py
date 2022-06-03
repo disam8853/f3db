@@ -1,3 +1,4 @@
+from urllib import response
 from flask import Flask, request, abort, Response, jsonify, make_response
 from environs import Env
 import pandas as pd
@@ -10,7 +11,8 @@ from dag import DAG
 import pandas as pd
 from parse import parse, parse_param
 from f3db_pipeline import build_child_data_node, get_max_surrogate_number, generate_collection_version, compare_collection_version, build_root_data_node, build_pipeline
-
+import os
+import requests
 
 env = Env()
 env.read_env()
@@ -31,6 +33,25 @@ DATA = {}
 @app.route("/", methods=['GET'])
 def get():
     return 'OK'
+
+@app.route("/clear", methods=['GET'])
+def clear_volumn():
+    root = "./DATA_FOLDER/"
+    filenames = next(os.walk(root), (None, None, []))[2]
+    for f in filenames:
+        os.remove(os.path.join(root, f))
+    global dag 
+    dag = DAG("./DATA_FOLDER/graph.gml.gz")
+    
+    response = []
+    for url in collaborators:
+
+        payload={}
+        headers = {}
+
+        response.append(requests.request("GET", url+"/clear", headers=headers, data=payload))
+
+    return jsonify(response = str(response))
 
 
 async def post(url, data, session):

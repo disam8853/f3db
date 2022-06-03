@@ -109,9 +109,9 @@ def get_max_surrogate_number(path, prefix) -> int:
     return max(version_nums)
     
 
-def generate_node_id(type="", who="", user="", tag="") -> str:
+def generate_node_id(type="", who="", user="", tag="", experiment_number="") -> str:
     date = current_date()
-    node_id = '_'.join([type, who, user, tag, date])
+    node_id = '_'.join([type, who, user, date, experiment_number])
     version_num = "_" + str(get_max_surrogate_number(DATA_FOLDER, node_id) + 1)
     node_id += version_num
     return node_id
@@ -127,7 +127,7 @@ def generate_node_filepath(folder, node_id, type):
 
 def generate_node(who, user, collection="", collection_version="", experiment_number=EXP_NUM, pipeline_id="", tag=TAG, type='data', folder=DATA_FOLDER, node_id="", src_id="", dag=None):
     if node_id == "":
-        node_id = generate_node_id(type, who, user, tag)
+        node_id = generate_node_id(type, who, user, tag, experiment_number)
 
     node_filepath = generate_node_filepath(folder, node_id, type)
 

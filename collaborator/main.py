@@ -14,6 +14,7 @@ from dag import DAG
 from networkx.readwrite import json_graph
 import json
 import numpy as np
+import os
 app = Flask(__name__)
 
 env = Env()
@@ -59,6 +60,17 @@ def create_dag():
     data = new_dag.get_json_graph()
     return data
 
+@app.route("/clear", methods=['GET'])
+def clear_volumn():
+    root = "./DATA_FOLDER/"
+    filenames = next(os.walk(root), (None, None, []))[2]
+    print(filenames)
+    for f in filenames:
+        os.remove(os.path.join(root, f))
+    global dag 
+    dag = DAG("./DATA_FOLDER/graph.gml.gz")
+    
+    return 'clear'
 
 @app.route("/basic_write", methods=['POST'])
 def basic_write():
@@ -99,7 +111,7 @@ def process_data():
     collection = req_json["collection"]
     query = req_json["query"]
     pipeline_id = req_json['pipeline_id']
-    experiment_number = req_json['experiment_number']
+    experiment_number = str(req_json['experiment_number'])
 
     if query:
         df = read_mongo_by_query(env('MONGODB_URL'), database_name=env(
