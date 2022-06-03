@@ -30,6 +30,7 @@ pipelines_db = db_client['f3db'].pipelines
 def get():
     return 'OK'
 
+
 @app.route("/dag", methods=['GET'])
 def get_dag():
     class NpEncoder(json.JSONEncoder):
@@ -42,18 +43,18 @@ def get_dag():
                 return obj.tolist()
             return super(NpEncoder, self).default(obj)
 
-
     data1 = json_graph.node_link_data(dag.G)
     print(data1)
     s1 = json.dumps(data1, cls=NpEncoder)
 
     return s1
 
+
 @app.route("/dag", methods=['POST'])
 def create_dag():
     data = request.json
     new_dag = DAG(data)
-    new_dag.add_edge('1','2')
+    new_dag.add_edge('1', '2')
 
     data = new_dag.get_json_graph()
     return data
@@ -98,6 +99,7 @@ def process_data():
     collection = req_json["collection"]
     query = req_json["query"]
     pipeline_id = req_json['pipeline_id']
+    experiment_number = req_json['experiment_number']
 
     if query:
         df = read_mongo_by_query(env('MONGODB_URL'), database_name=env(
@@ -112,7 +114,7 @@ def process_data():
         # pipeline = pipeline['collaborator']
     except Exception as e:
         return make_response(jsonify(error='pipeline not found'), 404)
-    
+
     # df = pd.DataFrame([[1,2],[3,4]])
     # long proces
     # heavy_process = Process(  # Create a daemonic process with heavy "my_func"
@@ -123,10 +125,10 @@ def process_data():
 
     import time
 
-
     heavy_process = Thread(
-        target=long_data_transform, 
-        args=(lock, dag, df, collection, pipeline_id, pipeline),
+        target=long_data_transform,
+        args=(lock, dag, df, collection, pipeline_id,
+              pipeline, experiment_number),
         daemon=True
     )
     heavy_process.start()
