@@ -144,7 +144,9 @@ def merge_pipeline_api():
 
     if len(WAITING_PIPELINE[pipeline_id]['collaborators']) == 0:
         try:
-            merge_pipeline(dag, DATA[pipeline_id], pipeline_id)
+            experiment_number = WAITING_PIPELINE[pipeline_id]['experiment_number']
+            merge_pipeline(dag, DATA[pipeline_id],
+                           pipeline_id, experiment_number)
             model_id = run_pipeline(dag)
         except Exception as e:
             return Response('Merge failed.\n' + str(e), 400)
