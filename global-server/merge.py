@@ -1,6 +1,7 @@
 # TODO: merge collaborator data/pipeline into global
+from webbrowser import get
 from dag import DAG
-from utils import pickle_decode
+from utils import pickle_decode,  getexception
 import pandas as pd
 from f3db_pipeline import generate_node
 
@@ -26,7 +27,7 @@ def merge_pipeline(global_dag: DAG, collaborator_data: list, global_pipeline_id:
         "dataframe": pickle_encode(df)
     }, {}]
     """
-
+    
     # TODO: create empty dataframe
     global_df = pd.DataFrame()
 
@@ -36,26 +37,31 @@ def merge_pipeline(global_dag: DAG, collaborator_data: list, global_pipeline_id:
 
     # iter each collaborator post data
     for data in collaborator_data:
-
-        # TODO: if data is json, turn data into dict
-
-        colab_pipeline_id = data['pipeline_id']
-        colab_dag = DAG(data['dag_json'])
-        colab_df = pickle_decode(data['dataframe'])
-
-        # TODO: check collaborator dag
         
-        # merge data
-        global_df = pd.concat(global_df, colab_df)
+        try:
+            # TODO: if data is json, turn data into dict
 
-        # find last colab_data_node by colab_pipeline_id
-        colaba_node_id = colab_dag.get_nodes_with_attributes("pipeline_id", colab_pipeline_id)
+            colab_pipeline_id = data['pipeline_id']
+            colab_dag = DAG(data['dag_json'])
+            colab_df = pickle_decode(data['dataframe'])
 
-        # add edge between collab_data_node & new_data_node
-        global_dag.add_edge(global_node_id, colaba_node_id)
+            # TODO: check collaborator dag
+            
+            # merge data
+            global_df = pd.concat([global_df, colab_df])
 
-        # merge global_dag & colab_dag
-        global_dag.dag_compose(colab_dag)
+            # find last colab_data_node by colab_pipeline_id
+            colab_node_id = colab_dag.get_nodes_with_attributes("pipeline_id", colab_pipeline_id)
+            print(colab_node_id)
+            
+            # merge global_dag & colab_dag
+            global_dag.dag_compose(colab_dag.G)
+
+            # add edge between collab_data_node & new_data_node
+            global_dag.add_edge(global_node_id, colab_node_id)
+
+        except Exception as e:
+            getexception(e)
 
 
     return None

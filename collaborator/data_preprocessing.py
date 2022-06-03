@@ -69,21 +69,12 @@ def long_data_transform(lock, dag:DAG, df:pd.DataFrame, collection_name:str, pip
         if(parsed_pipeline.index(sub_pipeline) == 0):
             src_id = build_pipeline(dag, src_id, sub_pipeline, param_list = sub_pipeline_param_list)
         else:
-            # if(sub_pipeline == 'train_test_split'):
-            #     X = first_pipe[first_pipe.columns[0:-1]]
-            #     y  = first_pipe[first_pipe.columns[-1]]
-            #     X_train,X_test,y_trian,y_test = train_test_split(X,y, test_size=0.2, random_state=42)
-                
-            #     X_train = pd.DataFrame(X_train)
-            #     X_test = pd.DataFrame(X_test)
-            #     first_pipe = pd.concat([X_train,X_test],axis =0)
-            #     # print('tttt', first_pipe)
-            # else:
             src_id = build_pipeline(dag, src_id, sub_pipeline, param_list = sub_pipeline_param_list)
 
 
     print(dag.nodes)
     print(dag.roots)
+    print(dag.leaves)
 
     import time
     for i in range(3):
