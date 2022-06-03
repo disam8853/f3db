@@ -119,7 +119,6 @@ def merge_pipeline():
         if attr not in data:
             return Response(f'Must provide correct {attr}!', 400)
 
-    df = data['dataframe']
     col_pipeline_id = data['pipeline_id']
     try:
         pipeline = pipelines_db.find_one(
@@ -136,7 +135,7 @@ def merge_pipeline():
         return Response(f'Collaborator {col_pipeline_id} has submitted.', 400)
     if pipeline_id not in DATA:
         DATA[pipeline_id] = []
-    DATA[pipeline_id].append(df)
+    DATA[pipeline_id].append(data)
 
     # remove collaborator that has submitted df from waiting list
     WAITING_PIPELINE[pipeline_id]['collaborators'] = [
@@ -144,7 +143,8 @@ def merge_pipeline():
 
     if len(WAITING_PIPELINE[pipeline_id]['collaborators']) == 0:
         try:
-            merge_pipeline(dag, data=DATA[pipeline_id], pipeline_id=pipeline_id)
+            merge_pipeline(
+                dag, data=DATA[pipeline_id], pipeline_id=pipeline_id)
             model_id = run_pipeline(dag=dag)
         except Exception as e:
             return Response('Merge failed.\n' + str(e), 400)
@@ -158,7 +158,6 @@ def merge_pipeline():
 
 def find_pipeline_by_id(pipeline_id):
     return pipelines_db.find_one({'_id': ObjectId(pipeline_id)}, {"_id": 0})
-
 
 
 def run_pipeline(dag):
