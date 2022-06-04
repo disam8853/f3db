@@ -30,8 +30,11 @@ from sklearn.svm import SVC
 from sklearn.utils.validation import check_is_fitted
 
 from dag import DAG
-from parse import check_fitted, parse, parse_param
+
 from utils import current_date, current_time, predict_and_convert_to_metric_str
+from joblib import dump, load
+from environs import Env
+from parse import check_fitted, parse, parse_global_param
 
 """
 def psudocode():
@@ -189,7 +192,7 @@ def build_pipeline(dag, src_id, ops, param_list, x_header=XHEADER,y_header=YHEAD
     pipe_string = parse_pipe_to_string(ops)
     
     pipe = Pipeline(ops)
-
+    # print('opssss:',ops)
     # is model
     if (ops[-1][0] == 'model'):
         print('is model')
@@ -208,6 +211,14 @@ def build_pipeline(dag, src_id, ops, param_list, x_header=XHEADER,y_header=YHEAD
         save_model(node_filepath, pipe.steps[-1][1].fit(X,y))
         dag.add_node(node_id, **node_info)
         dag.add_edge(src_id, node_id)
+
+                # test model
+        # loaded_model = joblib.load('model.joblib') # TODO: model path need to be modified
+        y_pred = pipe.predict(X)
+        # accuracy = 
+        test_results = predict_and_convert_to_metric_str(y,y_pred)
+
+        print('testing data result : ', test_results)
         return node_id
 
     # is data
@@ -215,8 +226,6 @@ def build_pipeline(dag, src_id, ops, param_list, x_header=XHEADER,y_header=YHEAD
     
         node_id, node_info, node_filepath = generate_node(
             who=env('WHO'), user=env('USER'), experiment_number=experiment_number, tag=TAG, type='data', src_id=src_id, dag=dag)
-        
-        
         print('is data')
         pipe.set_params(**param_list)
         trans_data = pipe.fit_transform(X,y)
@@ -244,20 +253,20 @@ def run_pipeline(dag, src_id, experiment_number, pipeline):
 
 
     # # do pipeline (chung)
-    pipe_param_string = parse_param(pipeline, 'global-server')
+    pipe_param_string = parse_global_param(pipeline, 'global-server')
     parsed_pipeline = parse_global_pipeline(pipeline, "global-server")
     # parsed_pipeline = parse_global_pipeline(raw_pipe, "global-server")
-    # print(parsed_pipeline)
+    print('PipeParam',pipe_param_string,parsed_pipeline)
 
     for sub_pipeline_idx in range(len(parsed_pipeline)):
         sub_pipeline = parsed_pipeline[sub_pipeline_idx]
-        
+        sub_pipeline_param_list = pipe_param_string[sub_pipeline_idx]
         if(sub_pipeline == 'train_test_split'):
-            src_id = train_test_split_training(dag, parsed_pipeline[sub_pipeline_idx+1],src_id)
+            src_id = train_test_split_training(dag, parsed_pipeline[sub_pipeline_idx+1],src_id, sub_pipeline_param_list)
             break # train test split 之後便直接後面剩下的pipeline 直到 model train完成
         else:
             # train_test_split 之前的node要儲存資料
-            sub_pipeline_param_list = pipe_param_string[parsed_pipeline.index(sub_pipeline)]
+            # sub_pipeline_param_list = pipe_param_string[parsed_pipeline.index(sub_pipeline)]
             src_id = build_pipeline(dag, src_id, sub_pipeline, param_list=sub_pipeline_param_list, experiment_number=experiment_number)
 
     return parsed_pipeline
@@ -270,26 +279,28 @@ def parse_global_pipeline(raw_pipe_data,character):
     pipe = raw_pipe_data[character]
     for idx in range(len(pipe)):
         # print(pipe[idx])
-        if(pipe[idx]['name'] != 'SaveData' and pipe[idx]['name'] != 'train_test_split'):
+        if(pipe[idx]['name'] != 'train_test_split'):
             strp = pipe[idx]['name']+'()'
             if check_fitted(eval(strp)):
                 sub_pipeline.append(('model',eval(strp)))
             else:
                 sub_pipeline.append((pipe[idx]['name'],eval(strp)))
-        elif(pipe[idx]['name'] == 'train_test_split'):
+        # elif(pipe[idx]['name'] == 'train_test_split'):
+        elif (pipe[idx]['name'] == 'train_test_split' and (idx == 0)):
+            # final_pipeline.append(sub_pipeline)
+            # sub_pipeline = []
+            final_pipeline.append('train_test_split')
+        elif(pipe[idx]['name'] == 'train_test_split' and (idx != 0)):
             final_pipeline.append(sub_pipeline)
             sub_pipeline = []
             final_pipeline.append('train_test_split')
-        else:
-            final_pipeline.append(sub_pipeline)
-            final_pipeline.append(pipe[idx]['name'])
-            sub_pipeline = []      
+   
 
     final_pipeline.append(sub_pipeline)
     return final_pipeline
 
 
-def train_test_split_training(dag, model_pipeline, src_id):  # TODO : Model parameter (train_test_split)
+def train_test_split_training(dag, model_pipeline, src_id, param_list):  # TODO : Model parameter (train_test_split)
     print("start train test split")
     data_path = dag.get_node_attr(src_id)['filepath']
     experiment_number = dag.get_node_attr(src_id)['experiment_number']
@@ -306,10 +317,11 @@ def train_test_split_training(dag, model_pipeline, src_id):  # TODO : Model para
     # before model
     if(len(model_pipeline) >  1):
         trans_pipe = Pipeline(model_pipeline[:-1])
-        # pipe.set_params(**param_list)
+        
         trans_data = trans_pipe.fit_transform(X_train,y_train)
         X_train = pd.DataFrame(trans_data, columns = XHEADER)
-
+    pipe.set_params(**param_list)
+    print('pppppp', param_list)
     clf = pipe.steps[-1][1].fit(X_train, y_train)
     # test model
     y_pred = pipe.predict(X_test)
