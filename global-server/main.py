@@ -22,7 +22,7 @@ import joblib
 import os
 import requests
 from joblib import dump, load
-from utils import getexception 
+from utils import getexception, predict_and_convert_to_metric_str
 XHEADER =  ['AGE','HBP_d_all_systolic', 'HBP_d_AM_systolic',
        'HBP_d_PM_systolic', 'HBP_d_all_diastolic', 'HBP_d_AM_diastolic',
        'HBP_d_PM_diastolic', 'HBP_d_systolic_D1_AM1', 'HBP_d_systolic_D1_AM2',
@@ -312,7 +312,7 @@ def run_pipeline(dag, src_id, experiment_number):
 
     pipeline_id = dag.get_node_attr(src_id)['pipeline_id']
     pipeline = find_pipeline_by_id(pipeline_id)
-    print('pipeline', pipeline)
+    # print('pipeline', pipeline)
 
     # # do pipeline (chung)
     pipe_param_string = parse_param(pipeline, 'global-server')
@@ -332,8 +332,6 @@ def run_pipeline(dag, src_id, experiment_number):
             src_id = build_pipeline(dag, src_id, sub_pipeline, param_list=sub_pipeline_param_list, experiment_number=experiment_number)
             
 
-        # sub_pipeline_param_list = pipe_param_string[parsed_pipeline.index(sub_pipeline)]
-        # src_id = build_pipeline(dag, src_id, sub_pipeline, param_list=sub_pipeline_param_list, experiment_number=experiment_number)
 
     return parsed_pipeline
 
@@ -365,34 +363,35 @@ def parse_global_pipeline(raw_pipe_data,character):
     return final_pipeline
 
 
-def train_test_split_training(model_pipeline, src_id):  
+def train_test_split_training(model_pipeline, src_id):  # TODO : Model parameter (train_test_split)
     data_path = dag.get_node_attr(src_id)['filepath']
-    print(data_path)
-    # data_path = src_id
-    model_save_path = '../dev-container/volumn/global-server/DATA_FOLDER/model.joblib'
     data = pd.read_csv(data_path)
-    print('traindata', data)
+
+
     X = data[XHEADER]
     y = data[YHEADER]
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33, random_state=42, stratify=y)
 
     pipe = Pipeline(model_pipeline)
 
-
+    # before model
     if(len(model_pipeline) >  1):
         trans_pipe = Pipeline(model_pipeline[:-1])
         # pipe.set_params(**param_list)
         trans_data = trans_pipe.fit_transform(X_train,y_train)
         X_train = pd.DataFrame(trans_data, columns = XHEADER)
 
-    
-    dump(pipe.steps[-1][1].fit(X_train, y_train),'model.joblib') 
+    # fit model
+    dump(pipe.steps[-1][1].fit(X_train, y_train),'model.joblib')  # TODO: model path need to be modified
 
     # test model
-    loaded_model = joblib.load('model.joblib')
-    result = pipe.predict(X_test)
-    score = pipe.score(X_test,y_test)
-    # load(model_save_path)
+    loaded_model = joblib.load('model.joblib') # TODO: model path need to be modified
+    y_pred = pipe.predict(X_test)
+    # accuracy = 
+    test_results = predict_and_convert_to_metric_str(y_test,y_pred)
+
+    print('testing data result : ', test_results)
+
 
       
 
