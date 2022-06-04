@@ -2,13 +2,21 @@
 from utils import metric_str_to_dict
 from dag import DAG
 
-def get_k_best_models(dag:DAG, k:int, metric:str, condition=None, sorted=True, **kwargs) -> list:
+# get_k_best_models(dag, k=2, metric="accuracy", condition=[('user','bobo')])
+def get_k_best_models(dag:DAG, k:int, metric:str, condition=None, **kwargs) -> list:
     if condition is None:
-        condition = []
         for k, v in kwargs.items():
             condition.append((k, v))
 
-    node_list = dag.get_nodes_with_condition(condition, return_info=True)
-    sorted_node_list = sorted(node_list, key=lambda n: metric_str_to_dict(n['metrics'])[metric])[:k]
+    # only search model
+    if ('type', 'model') not in condition:
+        condition.append(('type', 'model'))
 
-    return sorted_node_list
+    node_list = dag.get_nodes_with_condition(condition, return_info=True)
+    sorted_node_list = sorted(node_list, key=lambda n: metric_str_to_dict(n['metrics'])[metric], reverse=True)[:k]
+
+    return [n['filepath'].split(".")[0] for n in sorted_node_list]
+
+
+
+   
