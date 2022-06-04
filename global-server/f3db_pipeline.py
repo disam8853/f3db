@@ -144,7 +144,9 @@ def generate_node(who, user, collection="", collection_version="", experiment_nu
                     'type': type, # data or model
                     'pipeline_id': pipeline_id, # comma seperate, global server has 1 id, collab has many id
                     'operation': "", # comma seperate
-                    'filepath': node_filepath
+                    'filepath': node_filepath,
+                    'x_headers': "", # comma seperate, global server has 1 id, collab has many id -> list of strings
+                    'y_headers': "",
                 }
     else:
         print("inherit dag")
