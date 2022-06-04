@@ -20,7 +20,7 @@ from sklearn.svm import SVC
 from sklearn.utils.validation import check_is_fitted
 
 from dag import DAG
-from utils import current_date, current_time
+from utils import current_date, current_time, predict_and_convert_to_metric_str
 from joblib import dump, load
 from environs import Env
 from parse import parse, parse_param
@@ -199,6 +199,14 @@ def build_pipeline(dag, src_id, ops, param_list, x_header=XHEADER,y_header=YHEAD
         save_model(node_filepath, pipe.steps[-1][1].fit(X,y))
         dag.add_node(node_id, **node_info)
         dag.add_edge(src_id, node_id)
+
+                # test model
+        # loaded_model = joblib.load('model.joblib') # TODO: model path need to be modified
+        y_pred = pipe.predict(X)
+        # accuracy = 
+        test_results = predict_and_convert_to_metric_str(y,y_pred)
+
+        print('testing data result : ', test_results)
         return node_id
 
     # is data
@@ -206,8 +214,6 @@ def build_pipeline(dag, src_id, ops, param_list, x_header=XHEADER,y_header=YHEAD
     
         node_id, node_info, node_filepath = generate_node(
             who=env('WHO'), user=env('USER'), experiment_number=experiment_number, tag=TAG, type='data', src_id=src_id, dag=dag)
-        
-        
         print('is data')
         pipe.set_params(**param_list)
         trans_data = pipe.fit_transform(X,y)
