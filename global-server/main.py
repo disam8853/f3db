@@ -24,7 +24,7 @@ import joblib
 import os
 import requests
 from joblib import dump, load
-from utils import getexception, predict_and_convert_to_metric_str
+from utils import getexception, predict_and_convert_to_metric_str, parse_condition_dict_to_tuple_list
 
 XHEADER =  ['AGE','HBP_d_all_systolic', 'HBP_d_AM_systolic',
        'HBP_d_PM_systolic', 'HBP_d_all_diastolic', 'HBP_d_AM_diastolic',
@@ -260,20 +260,40 @@ def predict_model(model_id):
 
     return jsonify(result=result.tolist())
 
-from search import get_k_best_models
+from search import get_k_best_models, find_match_nodes
 @app.route('/model/get_k_best', methods=["POST"])
 def get_top_k_models():
     data = request.json
+
+    for attr in ['k', 'metric', 'condition']:
+        if attr not in data:
+            return Response(f'Must provide correct {attr}!', 400)
+
     k = data['k']
     metric = data['metric']
-    condition = data['condition']
-    print(condition)
+    condition_dict = data['condition']
+    condition = parse_condition_dict_to_tuple_list(condition_dict)
 
     node_id_list = get_k_best_models(dag, k, metric, condition)
     return jsonify(node_id_list)
 
 def find_pipeline_by_id(pipeline_id):
     return pipelines_db.find_one({'_id': ObjectId(pipeline_id)}, {"_id": 0})
+
+
+@app.route("/pipeline/get_match_node_id", methods=["POST"])
+def get_match_nodes():
+    data = request.json
+
+    for attr in ['condition']:
+        if attr not in data:
+            return Response(f'Must provide correct {attr}!', 400)
+
+    condition_dict = data['condition']
+    condition = parse_condition_dict_to_tuple_list(condition_dict)
+    node_id_list = find_match_nodes(dag, condition)
+
+    return jsonify(node_id_list)
 
 
 # TODO: function parameter -> dag, df, model_id, raw_pipe_data:dict
