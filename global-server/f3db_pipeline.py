@@ -170,13 +170,13 @@ def build_pipeline(dag, src_id, ops, param_list, x_header=XHEADER,y_header=YHEAD
 
     data_path = dag.get_node_attr(src_id)['filepath']
     dataframe = pd.read_csv(data_path)
-    print("build_pipeline: ", dataframe.head())
+    # print("build_pipeline: ", dataframe.head())
 
     X = dataframe.drop(y_header, axis=1, errors="ignore") # TODO: change header to number or catch exception or record the header change in pipeline (recommand)
     X = X.drop('_id', axis=1, errors="ignore")
 
     y =  dataframe[y_header] # sklearn will drop header after some data transformation
-    print('Origin',X)
+    # print('Origin',X)
     pipe_string = parse_pipe_to_string(ops)
     
     pipe = Pipeline(ops)
@@ -184,6 +184,14 @@ def build_pipeline(dag, src_id, ops, param_list, x_header=XHEADER,y_header=YHEAD
     # is model
     if (ops[-1][0] == 'model'):
         print('is model')
+
+        if(len(ops) >  1):
+            trans_pipe = Pipeline(ops[:-1])
+            pipe.set_params(**param_list)
+            trans_data = trans_pipe.fit_transform(X,y)
+            X = pd.DataFrame(trans_data, columns = x_header)
+
+
         node_id, node_info, node_filepath = generate_node(
             who=env('WHO'), user=env('USER'), experiment_number=experiment_number, tag=TAG, type='model', src_id=src_id, dag=dag)
         pipe.set_params(**param_list)
