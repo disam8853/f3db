@@ -6,7 +6,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import FunctionTransformer, StandardScaler
 from sklearn.svm import SVC
 from sklearn.decomposition import PCA
-
+from sklearn.preprocessing import LabelEncoder
 import numpy as np
 from random import randrange, choice
 from sklearn.neighbors import NearestNeighbors
@@ -44,6 +44,39 @@ def basic_classification_pipeline():
     # print("show edges: ", pipe.dag.get_node_edges(pipe.dag.get_topological_sort()))
     # print("finish")
 
+class FillNa(BaseEstimator, TransformerMixin):
+
+    def transform(self, x, y=None):
+            non_numerics_columns = x.columns.difference(
+                x._get_numeric_data().columns)
+            for column in x.columns:
+                if column in non_numerics_columns:
+                    x.loc[:, column] = x.loc[:, column].fillna(
+                        x.loc[:, column].value_counts().idxmax())
+                else:
+                    x.loc[:, column] = x.loc[:, column].fillna(
+                        x.loc[:, column].mean())
+            return x
+
+    def fit(self, x, y=None):
+        return self
+
+
+class CategoricalToNumerical(BaseEstimator, TransformerMixin):
+
+    def transform(self, x, y=None):
+        non_numerics_columns = x.columns.difference(
+            x._get_numeric_data().columns)
+        le = LabelEncoder()
+        for column in non_numerics_columns:
+            x.loc[:, column] = x.loc[:, column].fillna(
+                x.loc[:, column].value_counts().idxmax())
+            le.fit(x.loc[:, column])
+            x.loc[:, column] = le.transform(x.loc[:, column]).astype(int)
+        return x
+
+    def fit(self, x, y=None):
+        return self
 
 
 class FeatureSelector(BaseEstimator, TransformerMixin):

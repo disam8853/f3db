@@ -32,7 +32,7 @@ class DAG():
             self.number_of_edges = nx.number_of_edges(self.G)
             self.number_of_nodes = nx.number_of_nodes(self.G)
             self.type = type(self.G)
-            
+
             self.save_graph("./DATA_FOLDER/graph.gml.gz")
             return output
         return wrapper
@@ -71,6 +71,7 @@ class DAG():
                 'filepath':'default filepath',
                 'x_headers': "", # comma seperate, global server has 1 id, collab has many id -> list of strings
                 'y_headers': "", # 1 string
+                'metrics':"" # model result
             }
         
         try:
@@ -188,27 +189,34 @@ class DAG():
         s = self.G.subgraph(nx.dfs_tree(self.G, src_id="1").nodes()).copy()
         return s
 
-    def get_nodes_with_attributes(self, attribute, value) -> list:
-        selected_data = [ n for n,d in self.G.nodes().items() if d[attribute] == value]
-        return selected_data
+    # def get_nodes_with_attributes(self, attribute, value) -> list:
+    #     selected_data = [ n for n,d in self.G.nodes().items() if d[attribute] == value]
+    #     return selected_data
 
-    def get_nodes_with_two_attributes(self, a1, v1, a2, v2) -> list:
-        selected_data = [ n for n,d in self.G.nodes().items() if ((d[a1] == v1) and (d[a2] == v2))]
-        return selected_data
+    # def get_nodes_with_two_attributes(self, a1, v1, a2, v2) -> list:
+    #     selected_data = [ n for n,d in self.G.nodes().items() if ((d[a1] == v1) and (d[a2] == v2))]
+    #     return selected_data
 
-    def get_nodes_with_condition(self, condition) -> list:
+    def get_nodes_with_condition(self, condition, return_info=False) -> list:
         # condition = [("who", 'global-server'), ("user", 'bobo'), ("collection_version", 3)] 
         def check(n, d, con):
             for attr, val in con:
                 if d[attr] != val:
                     return []
             return [n]
-        
-        node_list = []
-        for n, d in self.G.nodes().items():
-            node_list += check(n, d, condition)
 
-        return node_list
+        if return_info:
+            list = []
+            for n, d in self.G.nodes().items():
+                node_list.append(self.get_node_attr(check(n, d, condition))[0])
+
+            return node_list
+        else:
+            node_list = []
+            for n, d in self.G.nodes().items():
+                node_list += check(n, d, condition)
+
+            return node_list
 
     def get_max_attribute_node(self, node_id_list, attribute) -> DAG:
 

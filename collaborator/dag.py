@@ -8,7 +8,7 @@ from utils import current_time, current_date
 from functools import singledispatch, update_wrapper
 import json
 import numpy as np
-
+from operator import le, ge
 
 class NpEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -71,6 +71,7 @@ class DAG():
                 'filepath':'default filepath',
                 'x_headers': "", # comma seperate, global server has 1 id, collab has many id -> list of strings
                 'y_headers': "", # 1 string
+                'metrics':"" # model result
             }
         
         try:
@@ -196,21 +197,28 @@ class DAG():
         selected_data = [ n for n,d in self.G.nodes().items() if ((d[a1] == v1) and (d[a2] == v2))]
         return selected_data
 
-    def get_nodes_with_condition(self, condition) -> list:
+    def get_nodes_with_condition(self, condition, return_info=False) -> list:
         # condition = [("who", 'global-server'), ("user", 'bobo'), ("collection_version", 3)] 
         def check(n, d, con):
             for attr, val in con:
                 if d[attr] != val:
                     return []
             return [n]
-        
-        node_list = []
-        for n, d in self.G.nodes().items():
-            node_list += check(n, d, condition)
 
-        return node_list
+        if return_info:
+            list = []
+            for n, d in self.G.nodes().items():
+                node_list.append(self.get_node_attr(check(n, d, condition))[0])
 
-    def get_max_attribute_node(self, node_id_list, attribute) -> DAG:
+            return node_list
+        else:
+            node_list = []
+            for n, d in self.G.nodes().items():
+                node_list += check(n, d, condition)
+
+            return node_list
+
+    def get_max_attribute_node(self, node_id_list, attribute) -> str:
 
         max_attribute = 0
         for node_id in node_id_list:
@@ -220,12 +228,26 @@ class DAG():
                 max_attribute = attr_value
 
         return max_attribute
-
-
-            
-
-
-
+    
+    
+    def get_best_node_by_attribute(self, node_id_list: list, attribute:str, sign:function=None):
+        if sign is None:
+            sign = ge # dafault is greate than
+        if type(sign) is str:
+            if sign == ">":
+                sign = ge
+            elif sign == "<":
+                sign = le
+        
+        for index, node_id in enumerate(node_id_list):
+            node = self.get_node_attr(node_id)
+            if index == 0:
+                best_value = node[attribute]
+            attr_value = node[attribute]
+            if not sign(best_value, attr_value):
+                best_value = attr_value
+        return best_value
+    
 
 if __name__ == "__main__":
     print("\n**** create graph ****")

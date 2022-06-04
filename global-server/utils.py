@@ -3,6 +3,7 @@ import pickle
 import pandas as pd
 import traceback
 import sys
+from sklearn.metrics import precision_recall_fscore_support, accuracy_score
 
 def pickle_encode(df) -> str:
     pickled = pickle.dumps(df)
@@ -37,3 +38,17 @@ def getexception(e):
     print(errMsg)
 
 
+def predict_and_convert_to_metric_str(y_test, y_pred):
+    
+    metrics = []
+    metrics.append(accuracy_score(y_test, y_pred))
+    metrics.extend(precision_recall_fscore_support(y_test, y_pred, beta=1, average='macro')[:-1])
+
+    result_str = ",".join([str(x.round(3)) for x in metrics])
+        
+    return result_str
+
+
+def metric_str_to_dict(result_str):
+    return dict(zip(["accuracy","precision", "recall","f1"], map(lambda x: float(x), result_str.split(","))))
+    
