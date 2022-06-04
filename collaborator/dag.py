@@ -206,7 +206,7 @@ class DAG():
             return [n]
 
         if return_info:
-            list = []
+            node_list = []
             for n, d in self.G.nodes().items():
                 node_list.append(self.get_node_attr(check(n, d, condition))[0])
 

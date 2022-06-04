@@ -1,3 +1,4 @@
+from typing import Type
 from flask import Flask, request, abort, Response, jsonify, make_response
 from environs import Env
 import pandas as pd
@@ -17,6 +18,7 @@ import numpy as np
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import FunctionTransformer, StandardScaler, MinMaxScaler
 from sklearn.pipeline import Pipeline
+from sklearn.ensemble import *
 import numpy as np
 import joblib
 import os
@@ -40,7 +42,7 @@ print(collaborators)
 db_client = MongoClient(env("MONGODB_URL"))
 pipelines_db = db_client['f3db'].pipelines
 
-dag = DAG('graph.gml.gz')
+dag = DAG("./DATA_FOLDER/graph.gml.gz")
 
 WAITING_PIPELINE = {}
 DATA = {}
@@ -258,6 +260,17 @@ def predict_model(model_id):
 
     return jsonify(result=result.tolist())
 
+from search import get_k_best_models
+@app.route('/model/get_k_best', methods=["POST"])
+def get_top_k_models():
+    data = request.json
+    k = data['k']
+    metric = data['metric']
+    condition = data['condition']
+    print(condition)
+
+    node_id_list = get_k_best_models(dag, k, metric, condition)
+    return jsonify(node_id_list)
 
 def find_pipeline_by_id(pipeline_id):
     return pipelines_db.find_one({'_id': ObjectId(pipeline_id)}, {"_id": 0})
@@ -310,11 +323,13 @@ def parse_client_pipeline(raw_pipe_data):
  
 
         
-def find_greatest_exp_num(dag, pipeline_id, collection):
+def find_greatest_exp_num(dag, pipeline_id, collection) -> int:
     # nids = dag.get_nodes_with_two_attributes(
     #     'pipeline_id', pipeline_id, 'collection', collection)
     # return dag.get_max_attribute_node(nids, 'experiment_number')
-
-    condition = [('pipeline_id', pipeline_id), ('collection', collection)]
-    nids = dag.get_nodes_with_condition(condition)
-    return dag.get_max_attribute_node(nids, 'experiment_number')
+    try:
+        condition = [('pipeline_id', pipeline_id), ('collection', collection)]
+        nids = dag.get_nodes_with_condition(condition)
+        return dag.get_max_attribute_node(nids, 'experiment_number')
+    except TypeError:
+        return 0

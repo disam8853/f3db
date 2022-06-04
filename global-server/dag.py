@@ -4,11 +4,10 @@ from __future__ import annotations
 
 import networkx as nx
 from networkx.readwrite import json_graph
-from utils import current_time, current_date
+from utils import current_time, current_date, getexception
 from functools import singledispatch, update_wrapper
 import json
 import numpy as np
-
 
 class NpEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -81,7 +80,8 @@ class DAG():
                 self.G = json_graph.node_link_graph(graph_object)
             else:
                 self.G = graph_object
-        except:
+        except Exception as e:
+            getexception(e)
             self.G = nx.MultiDiGraph()
 
     @dag_refresh
@@ -202,19 +202,22 @@ class DAG():
         def check(n, d, con):
             for attr, val in con:
                 if d[attr] != val:
-                    return []
-            return [n]
+                    return None
+            return n
 
         if return_info:
-            list = []
+            node_list = []
             for n, d in self.G.nodes().items():
-                node_list.append(self.get_node_attr(check(n, d, condition))[0])
+                target_node = check(n, d, condition)
+                if target_node is not None:
+                    info = self.get_node_attr(target_node)
+                    node_list.append(info)
 
             return node_list
         else:
             node_list = []
             for n, d in self.G.nodes().items():
-                node_list += check(n, d, condition)
+                node_list.append(check(n, d, condition))
 
             return node_list
 

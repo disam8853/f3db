@@ -78,12 +78,10 @@ def long_data_transform(lock, dag: DAG, df: pd.DataFrame, collection_name: str, 
             src_id = build_pipeline(
                 dag, src_id, sub_pipeline, param_list=sub_pipeline_param_list, experiment_number=experiment_number)
 
-    print(dag.nodes_info)
-
-    import time
-    for i in range(3):
-        print(i)
-        time.sleep(1)
+    # import time
+    # for i in range(3):
+    #     print(i)
+    #     time.sleep(1)
 
     send_result_to_global_server(dag, pipeline_id, src_id)
 
