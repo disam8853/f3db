@@ -32,7 +32,7 @@ class DAG():
             self.number_of_edges = nx.number_of_edges(self.G)
             self.number_of_nodes = nx.number_of_nodes(self.G)
             self.type = type(self.G)
-
+            
             self.save_graph("./DATA_FOLDER/graph.gml.gz")
             return output
         return wrapper
@@ -145,7 +145,7 @@ class DAG():
 
     def get_node_edges(self, index) -> list:
         # index can be list of nodes indicies or one index 
-        return self.G.edges(index)
+        return self.G.edges(index).copy()
 
 
     def get_topological_sort(self) -> list:
@@ -154,7 +154,8 @@ class DAG():
     def get_node_attr(self, index) -> dict:
         if not self.G.has_node(index):
             return False
-        return self.G.nodes[index]
+        # shallow copy
+        return self.G.nodes[index].copy()
 
     def set_all_nodes_attr(self, values, name=None) -> None:
         nx.set_node_attributes(self.G, values, name)
@@ -184,7 +185,7 @@ class DAG():
         return data
 
     def get_subgraph(self, src_id) -> DAG:
-        s = self.G.subgraph(nx.dfs_tree(self.G, src_id="1").nodes())
+        s = self.G.subgraph(nx.dfs_tree(self.G, src_id="1").nodes()).copy()
         return s
 
     def get_nodes_with_attributes(self, attribute, value) -> list:
@@ -219,6 +220,7 @@ class DAG():
                 max_attribute = attr_value
 
         return max_attribute
+
 
             
 
