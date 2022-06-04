@@ -302,6 +302,10 @@ def run_pipeline(dag, src_id, experiment_number):
 
 
 def find_greatest_exp_num(dag, pipeline_id, collection):
-    nids = dag.get_nodes_with_two_attributes(
-        'pipeline_id', pipeline_id, 'collection', collection)
+    # nids = dag.get_nodes_with_two_attributes(
+    #     'pipeline_id', pipeline_id, 'collection', collection)
+    # return dag.get_max_attribute_node(nids, 'experiment_number')
+
+    condition = [('pipeline_id', pipeline_id), ('collection', collection)]
+    nids = dag.get_nodes_with_condition(condition)
     return dag.get_max_attribute_node(nids, 'experiment_number')
