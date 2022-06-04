@@ -193,7 +193,7 @@ def build_pipeline(dag, src_id, ops, param_list, x_header=XHEADER,y_header=YHEAD
     pipe_string = parse_pipe_to_string(ops)
     
     pipe = Pipeline(ops)
-
+    # print('opssss:',ops)
     # is model
     if (ops[-1][0] == 'model'):
         print('is model')
@@ -280,20 +280,22 @@ def parse_global_pipeline(raw_pipe_data,character):
     pipe = raw_pipe_data[character]
     for idx in range(len(pipe)):
         # print(pipe[idx])
-        if(pipe[idx]['name'] != 'SaveData' and pipe[idx]['name'] != 'train_test_split'):
+        if(pipe[idx]['name'] != 'train_test_split'):
             strp = pipe[idx]['name']+'()'
             if check_fitted(eval(strp)):
                 sub_pipeline.append(('model',eval(strp)))
             else:
                 sub_pipeline.append((pipe[idx]['name'],eval(strp)))
-        elif(pipe[idx]['name'] == 'train_test_split'):
+        # elif(pipe[idx]['name'] == 'train_test_split'):
+        elif (pipe[idx]['name'] == 'train_test_split' and (idx == 0)):
+            # final_pipeline.append(sub_pipeline)
+            # sub_pipeline = []
+            final_pipeline.append('train_test_split')
+        elif(pipe[idx]['name'] == 'train_test_split' and (idx != 0)):
             final_pipeline.append(sub_pipeline)
             sub_pipeline = []
             final_pipeline.append('train_test_split')
-        else:
-            final_pipeline.append(sub_pipeline)
-            final_pipeline.append(pipe[idx]['name'])
-            sub_pipeline = []      
+   
 
     final_pipeline.append(sub_pipeline)
     return final_pipeline
