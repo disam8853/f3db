@@ -23,7 +23,8 @@ from sklearn.preprocessing import *
 from sklearn.preprocessing import MinMaxScaler, FunctionTransformer, StandardScaler
 from sklearn.svm import SVC
 from sklearn.utils.validation import check_is_fitted
-
+from sklearn.linear_model import *
+from sklearn.svm import *
 from dag import DAG
 from parse import check_fitted, parse, parse_param
 from utils import current_date, current_time, predict_and_convert_to_metric_str
@@ -128,7 +129,7 @@ def generate_node_filepath(folder, node_id, type):
 
     return os.path.join(folder, node_id + format)
 
-def generate_node(who, user, collection="", collection_version="", experiment_number=EXP_NUM, pipeline_id="", tag=TAG, type='data', folder=DATA_FOLDER, node_id="", src_id="", dag=None):
+def generate_node(who, user, collection="", collection_version="", experiment_number=EXP_NUM, pipeline_id="", tag=TAG, type='data', metrics="" , folder=DATA_FOLDER, node_id="", src_id="", dag=None):
     if node_id == "":
         node_id = generate_node_id(type, who, user, tag)
 
@@ -148,6 +149,7 @@ def generate_node(who, user, collection="", collection_version="", experiment_nu
                     'pipeline_id': pipeline_id, # comma seperate, global server has 1 id, collab has many id
                     'operation': "", # comma seperate
                     'filepath': node_filepath,
+                    'metrics': metrics,
                     'x_headers': "", # comma seperate, global server has 1 id, collab has many id -> list of strings
                     'y_headers': "",
                 }
@@ -247,7 +249,7 @@ def run_pipeline(dag, src_id, experiment_number, pipeline):
         sub_pipeline = parsed_pipeline[sub_pipeline_idx]
         
         if(sub_pipeline == 'train_test_split'):
-            src_id = train_test_split_training(parsed_pipeline[sub_pipeline_idx+1],src_id)
+            src_id = train_test_split_training(dag, parsed_pipeline[sub_pipeline_idx+1],src_id)
             break # train test split 之後便直接後面剩下的pipeline 直到 model train完成
         else:
             # train_test_split 之前的node要儲存資料
@@ -283,8 +285,10 @@ def parse_global_pipeline(raw_pipe_data,character):
     return final_pipeline
 
 
-def train_test_split_training(model_pipeline, src_id):  # TODO : Model parameter (train_test_split)
+def train_test_split_training(dag, model_pipeline, src_id):  # TODO : Model parameter (train_test_split)
     data_path = dag.get_node_attr(src_id)['filepath']
+    experiment_number = dag.get_node_attr(src_id)['experiment_number']
+
     data = pd.read_csv(data_path)
 
 
@@ -301,14 +305,20 @@ def train_test_split_training(model_pipeline, src_id):  # TODO : Model parameter
         trans_data = trans_pipe.fit_transform(X_train,y_train)
         X_train = pd.DataFrame(trans_data, columns = XHEADER)
 
-    # fit model
-    dump(pipe.steps[-1][1].fit(X_train, y_train),'model.joblib')  # TODO: model path need to be modified
 
     # test model
-    loaded_model = joblib.load('model.joblib') # TODO: model path need to be modified
     y_pred = pipe.predict(X_test)
-    # accuracy = 
+    # evaluation
     test_results = predict_and_convert_to_metric_str(y_test,y_pred)
+
+    # add to dag
+    node_id, node_info, node_filepath = generate_node(
+            who=env('WHO'), user=env('USER'), experiment_number=experiment_number, metrics=test_results, tag=TAG, type='model', src_id=src_id, dag=dag)
+    
+    save_model(node_filepath, pipe.steps[-1][1].fit(X_train, y_train))
+    dag.add_node(node_id, **node_info)
+    dag.add_edge(src_id, node_id)
+
 
     print('testing data result : ', test_results)
 
