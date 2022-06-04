@@ -233,27 +233,36 @@ def predict_model(model_id):
         return Response('pipeline not found', 404)
     df = pd.DataFrame.from_dict(row_data)
 
-    result = transform_and_predict(dag, df, model_id, pipeline)
+    try:
+        result = transform_and_predict(dag, df, model_id, pipeline)
+    except NameError:
+        return Response('model not found', 404)
+    except Exception as e:
+        return Response('predict error\n' + str(e), 500)
 
-    return jsonify(result)
+    return jsonify(result=result.tolist())
 
 
 def find_pipeline_by_id(pipeline_id):
     return pipelines_db.find_one({'_id': ObjectId(pipeline_id)}, {"_id": 0})
 
-def transform_and_predict(raw_pipe_data:dict): # TODO: function parameter -> dag, df, model_id, raw_pipe_data:dict
-    df = pd.read_csv('../pressure_test.csv')
+
+# TODO: function parameter -> dag, df, model_id, raw_pipe_data:dict
+def transform_and_predict(dag: DAG, df, model_id, pipeline):
     """
     1. parse pipeline_dict to sklearn pipeline
     2. use the pipeline to transform the data
     3. pipeline.predict(X)
 
     """
-    clinet_pipeline = parse_client_pipeline(raw_pipe_data)
-    pipe = Pipeline(clinet_pipeline)
+    client_pipeline = parse_client_pipeline(pipeline)
+    pipe = Pipeline(client_pipeline)
     trans_data = pipe.fit_transform(df)
 
-    data_path = "../dev-container/volumn/global-server/DATA_FOLDER/model_global-server_admin_default-tag_2022-06-03_0.joblib"
+    dag_node = dag.get_node_attr(model_id)
+    if dag_node is False:
+        raise NameError('model not found')
+    data_path = dag_node['filepath']
     loaded_model = joblib.load(data_path)
     result = loaded_model.predict(trans_data)
     # print('res',result)
@@ -268,21 +277,20 @@ def parse_client_pipeline(raw_pipe_data):
 
     for character in ['collaborator', 'global-server']:
         pipe = raw_pipe_data[character]
-        
+
         for idx in range(len(pipe)):
             # print(pipe[idx])
             if(pipe[idx]['name'] != 'SaveData'):
-                
+
                 strp = pipe[idx]['name']+'()'
-                if check_fitted(eval(strp)) or (pipe[idx]['name'] in ref_list): 
+                if check_fitted(eval(strp)) or (pipe[idx]['name'] in ref_list):
                     continue
                 else:
                     ref_list.append(pipe[idx]['name'])
-                    sub_pipeline.append((pipe[idx]['name'],eval(strp)))
-            else: # SaveData
+                    sub_pipeline.append((pipe[idx]['name'], eval(strp)))
+            else:  # SaveData
                 continue
     return sub_pipeline
-
 
 
 def run_pipeline(dag, src_id, experiment_number):
