@@ -286,6 +286,7 @@ def parse_global_pipeline(raw_pipe_data,character):
 
 
 def train_test_split_training(dag, model_pipeline, src_id):  # TODO : Model parameter (train_test_split)
+    print("start train test split")
     data_path = dag.get_node_attr(src_id)['filepath']
     experiment_number = dag.get_node_attr(src_id)['experiment_number']
 
@@ -305,7 +306,7 @@ def train_test_split_training(dag, model_pipeline, src_id):  # TODO : Model para
         trans_data = trans_pipe.fit_transform(X_train,y_train)
         X_train = pd.DataFrame(trans_data, columns = XHEADER)
 
-
+    clf = pipe.steps[-1][1].fit(X_train, y_train)
     # test model
     y_pred = pipe.predict(X_test)
     # evaluation
@@ -315,7 +316,7 @@ def train_test_split_training(dag, model_pipeline, src_id):  # TODO : Model para
     node_id, node_info, node_filepath = generate_node(
             who=env('WHO'), user=env('USER'), experiment_number=experiment_number, metrics=test_results, tag=TAG, type='model', src_id=src_id, dag=dag)
     
-    save_model(node_filepath, pipe.steps[-1][1].fit(X_train, y_train))
+    save_model(node_filepath, clf)
     dag.add_node(node_id, **node_info)
     dag.add_edge(src_id, node_id)
 
