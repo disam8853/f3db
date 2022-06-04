@@ -86,7 +86,6 @@ def build_root_data_node(dag, dataframe, collection_name, collection_version, pi
     
     save_data(node_filepath, dataframe)
     dag.add_node(node_id, **node_info)
-    # print(dag.roots)
 
     return node_id
 

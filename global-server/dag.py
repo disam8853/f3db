@@ -20,6 +20,12 @@ class NpEncoder(json.JSONEncoder):
         return super(NpEncoder, self).default(obj)
 
 class DAG():
+    class NodeNotFound(Exception):
+        def __init__(self, node_id, message="node not found in dag"):
+            self.node_id = node_id
+            self.message = message
+            super().__init__(f"{self.message}, node id: {self.node_id}")
+
     def dag_refresh(func):
         # if change graph structure, refresh dag metadata
         def wrapper(self, *args, **kwargs):
@@ -154,7 +160,8 @@ class DAG():
 
     def get_node_attr(self, index) -> dict:
         if not self.G.has_node(index):
-            return False
+            # return False
+            raise self.NodeNotFound
         # shallow copy
         return self.G.nodes[index].copy()
 
@@ -205,21 +212,18 @@ class DAG():
                     return None
             return n
 
-        if return_info:
-            node_list = []
-            for n, d in self.G.nodes().items():
-                target_node = check(n, d, condition)
-                if target_node is not None:
+        node_list = []
+            
+        for n, d in self.G.nodes().items():
+            target_node = check(n, d, condition)
+            if target_node is not None:
+                if return_info:
                     info = self.get_node_attr(target_node)
                     node_list.append(info)
+                else:
+                    node_list.append(target_node)
 
-            return node_list
-        else:
-            node_list = []
-            for n, d in self.G.nodes().items():
-                node_list.append(check(n, d, condition))
-
-            return node_list
+        return node_list
 
     def get_max_attribute_node(self, node_id_list, attribute) -> DAG:
 

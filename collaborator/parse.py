@@ -11,20 +11,21 @@ from sklearn.preprocessing import *
 def read_raw_pipe():
     with open('test.json') as f:
         data = json.load(f)
-        # print(data)
         return data
+
+
 def check_fitted(clf): 
     X = np.array([[-1, -1], [-2, -1], [1, 1], [2, 1]])
     y = np.array([1, 1, 2, 2])
-    # print(clf,hasattr(clf, "predict"))
     return hasattr(clf, "predict")
+
+
 def parse(raw_pipe_data, character):
     final_pipeline = []
     param_pipeline = []
     sub_pipeline = []
     pipe = raw_pipe_data[character]
     for idx in range(len(pipe)):
-        # print(pipe[idx])
         if(pipe[idx]['name'] != 'SaveData'):
             strp = pipe[idx]['name']+'()'
             if check_fitted(eval(strp)):
@@ -68,7 +69,6 @@ def parse_param(raw_pipe_data, character):
                     param_pipeline[newkey] = pipe[idx]['parameter'][0][param]
 
         elif(pipe[idx]['name'] != 'SaveData' and not pipe[idx]['parameter']):
-            # print('NOT', pipe[idx]['name'])
             continue
         else:
             final_pipeline_param.append(param_pipeline)

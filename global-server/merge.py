@@ -57,12 +57,10 @@ def merge_pipeline(global_dag: DAG, collaborator_data: list, global_pipeline_id:
 
             # add edge between collab_data_node & new_data_node
             global_dag.add_edge(colab_last_node, global_node_id)
-            print(global_dag.get_nodes_with_condition([('type', 'model')]))
         except Exception as e:
             getexception(e)
 
     
     save_data(global_node_filepath, global_df)
-    print(global_dag.get_node_attr(global_node_id))
-
+    
     return global_node_id

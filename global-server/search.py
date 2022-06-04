@@ -13,7 +13,6 @@ def get_k_best_models(dag:DAG, k:int, metric:str, condition=None, **kwargs) -> l
         condition.append(('type', 'model'))
 
     node_list = dag.get_nodes_with_condition(condition, return_info=True)
-    print(node_list)
     k = min(len(node_list), k)
     sorted_node_list = sorted(node_list, key=lambda n: metric_str_to_dict(n['metrics'])[metric], reverse=True)[:k]
 

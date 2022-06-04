@@ -64,7 +64,6 @@ def create_dag():
 def clear_volumn():
     root = "./DATA_FOLDER/"
     filenames = next(os.walk(root), (None, None, []))[2]
-    print(filenames)
     for f in filenames:
         os.remove(os.path.join(root, f))
     global dag 
@@ -99,7 +98,6 @@ def basic_transform():
         df = read_mongo_collection(env('MONGODB_URL'), database_name=env(
             'db_name'), collection_name=collection)
     df = basic_data_transform(df)
-    print(df)
     return jsonify(
         dataframe=pickle_encode(df)
     )
