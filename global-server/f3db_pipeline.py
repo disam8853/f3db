@@ -30,7 +30,7 @@ from dag import DAG
 from utils import current_date, current_time, predict_and_convert_to_metric_str
 from joblib import dump, load
 from environs import Env
-from parse import check_fitted, parse, parse_param
+from parse import check_fitted, parse, parse_global_param
 
 """
 def psudocode():
@@ -249,20 +249,20 @@ def run_pipeline(dag, src_id, experiment_number, pipeline):
 
 
     # # do pipeline (chung)
-    pipe_param_string = parse_param(pipeline, 'global-server')
+    pipe_param_string = parse_global_param(pipeline, 'global-server')
     parsed_pipeline = parse_global_pipeline(pipeline, "global-server")
     # parsed_pipeline = parse_global_pipeline(raw_pipe, "global-server")
-    # print(parsed_pipeline)
+    print('PipeParam',pipe_param_string,parsed_pipeline)
 
     for sub_pipeline_idx in range(len(parsed_pipeline)):
         sub_pipeline = parsed_pipeline[sub_pipeline_idx]
-        
+        sub_pipeline_param_list = pipe_param_string[sub_pipeline_idx]
         if(sub_pipeline == 'train_test_split'):
-            src_id = train_test_split_training(dag, parsed_pipeline[sub_pipeline_idx+1],src_id)
+            src_id = train_test_split_training(dag, parsed_pipeline[sub_pipeline_idx+1],src_id, sub_pipeline_param_list)
             break # train test split 之後便直接後面剩下的pipeline 直到 model train完成
         else:
             # train_test_split 之前的node要儲存資料
-            sub_pipeline_param_list = pipe_param_string[parsed_pipeline.index(sub_pipeline)]
+            # sub_pipeline_param_list = pipe_param_string[parsed_pipeline.index(sub_pipeline)]
             src_id = build_pipeline(dag, src_id, sub_pipeline, param_list=sub_pipeline_param_list, experiment_number=experiment_number)
 
     return parsed_pipeline
@@ -294,7 +294,7 @@ def parse_global_pipeline(raw_pipe_data,character):
     return final_pipeline
 
 
-def train_test_split_training(dag, model_pipeline, src_id):  # TODO : Model parameter (train_test_split)
+def train_test_split_training(dag, model_pipeline, src_id, param_list):  # TODO : Model parameter (train_test_split)
     print("start train test split")
     data_path = dag.get_node_attr(src_id)['filepath']
     experiment_number = dag.get_node_attr(src_id)['experiment_number']
@@ -311,10 +311,11 @@ def train_test_split_training(dag, model_pipeline, src_id):  # TODO : Model para
     # before model
     if(len(model_pipeline) >  1):
         trans_pipe = Pipeline(model_pipeline[:-1])
-        # pipe.set_params(**param_list)
+        
         trans_data = trans_pipe.fit_transform(X_train,y_train)
         X_train = pd.DataFrame(trans_data, columns = XHEADER)
-
+    pipe.set_params(**param_list)
+    print('pppppp', param_list)
     clf = pipe.steps[-1][1].fit(X_train, y_train)
     # test model
     y_pred = pipe.predict(X_test)
