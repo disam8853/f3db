@@ -37,6 +37,11 @@ def getexception(e):
     errMsg = "File \"{}\", line {}, in {}: [{}] {}".format(fileName, lineNum, funcName, error_class, detail)
     print(errMsg)
 
+def parse_condition_dict_to_tuple_list(condition_dict):
+    condition = []
+    for k, v in condition_dict.items():
+        condition.append((k,v))
+    return condition
 
 def predict_and_convert_to_metric_str(y_test, y_pred):
     
