@@ -16,7 +16,7 @@ services:
       - FLASK_RUN_HOST=0.0.0.0
       - WHO=global-server
       - USER=admin
-      - COLLABORATORS_URL=http://collaborator1:8000,http://collaborator2:8000
+      - COLLABORATORS_URL=http://collaborator1:8000,http://collaborator2:8000,http://collaborator3:8000
       - PYTHONUNBUFFERED=1
   collaborator1:
     container_name: collaborator1
@@ -58,6 +58,26 @@ services:
       - PYTHONUNBUFFERED=1
       - DATA_FOLDER=./DATA_FOLDER/
       - db_name=f3db
+  collaborator3:
+    container_name: collaborator3
+    build: ../collaborator
+    ports:
+      - 20003:8000
+    volumes:
+      - ../collaborator:/app
+      - ./volumn/collaborator3/DATA_FOLDER:/app/DATA_FOLDER
+    environment:
+      - MONGODB_URL=mongodb://mongo3:27017/f3db
+      - GLOBAL_SERVER_URL=http://global-server:8000
+      - FLASK_APP=main.py
+      - FLASK_ENV=development
+      - FLASK_RUN_PORT=8000
+      - FLASK_RUN_HOST=0.0.0.0
+      - WHO=collaborator3
+      - USER=admin
+      - PYTHONUNBUFFERED=1
+      - DATA_FOLDER=./DATA_FOLDER/
+      - db_name=f3db
   mongo-global:
     image: mongo
     volumes:
@@ -91,17 +111,35 @@ services:
       - MONGO_INITDB_DATABASE=f3db
     logging:
       driver: none
+  mongo3:
+    image: mongo
+    volumes:
+      - ./volumn/collaborator3/mongodb:/data/db
+    ports:
+      - 27057:27017
+    restart: always
+    environment:
+      - MONGO_INITDB_DATABASE=f3db
+    logging:
+      driver: none
   mongo1-seed:
     image: mongo
     volumes:
       - ./seed-data:/seed-data
-    command: mongoimport -h mongo1 --db f3db -c test --type csv --mode upsert --headerline --file /seed-data/pressures.csv
+    command: mongoimport -h mongo1 --db f3db -c test --type csv --mode upsert --headerline --file /seed-data/collaborator1/pressures.csv
     depends_on:
       - mongo1
   mongo2-seed:
     image: mongo
     volumes:
       - ./seed-data:/seed-data
-    command: mongoimport -h mongo2 --db f3db -c test --type csv --mode upsert --headerline --file /seed-data/pressures.csv
+    command: mongoimport -h mongo2 --db f3db -c test --type csv --mode upsert --headerline --file /seed-data/collaborator2/pressures.csv
     depends_on:
       - mongo2
+  mongo3-seed:
+    image: mongo
+    volumes:
+      - ./seed-data:/seed-data
+    command: mongoimport -h mongo2 --db f3db -c test --type csv --mode upsert --headerline --file /seed-data/collaborator3/pressures.csv
+    depends_on:
+      - mongo3
