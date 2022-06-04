@@ -3,6 +3,7 @@ from environs import Env
 import pandas as pd
 from pymongo import MongoClient
 from bson.objectid import ObjectId
+from sklearn.model_selection import train_test_split
 import aiohttp
 import asyncio
 from merge import merge_pipeline
@@ -20,6 +21,13 @@ import numpy as np
 import joblib
 import os
 import requests
+from joblib import dump, load
+from utils import getexception 
+XHEADER =  ['AGE','HBP_d_all_systolic', 'HBP_d_AM_systolic',
+       'HBP_d_PM_systolic', 'HBP_d_all_diastolic', 'HBP_d_AM_diastolic',
+       'HBP_d_PM_diastolic', 'HBP_d_systolic_D1_AM1', 'HBP_d_systolic_D1_AM2',
+       'aspirin']
+YHEADER = 'CV'
 
 env = Env()
 env.read_env()
@@ -186,12 +194,16 @@ def merge_pipeline_api():
             collection = WAITING_PIPELINE[pipeline_id]['collection']
             src_id = merge_pipeline(dag, DATA[pipeline_id],
                                     pipeline_id, experiment_number, collection)
-            model_id = run_pipeline(dag, src_id, experiment_number)
+            try:
+                # print('chungggg', src_id)
+                run_pipeline(dag, src_id, experiment_number)
+            except Exception as e:
+                getexception(e)
         except Exception as e:
             return Response('Merge failed.\n' + str(e), 400)
         del WAITING_PIPELINE[pipeline_id]
         del DATA[pipeline_id]
-        return jsonify(model_id=model_id)
+        return jsonify(model_id=src_id)
 
     del pipeline['_id']
     return jsonify(collaborators=pipeline['collaborator_pipieline_ids'])
@@ -233,27 +245,36 @@ def predict_model(model_id):
         return Response('pipeline not found', 404)
     df = pd.DataFrame.from_dict(row_data)
 
-    result = transform_and_predict(dag, df, model_id, pipeline)
+    try:
+        result = transform_and_predict(dag, df, model_id, pipeline)
+    except NameError:
+        return Response('model not found', 404)
+    except Exception as e:
+        return Response('predict error\n' + str(e), 500)
 
-    return jsonify(result)
+    return jsonify(result=result.tolist())
 
 
 def find_pipeline_by_id(pipeline_id):
     return pipelines_db.find_one({'_id': ObjectId(pipeline_id)}, {"_id": 0})
 
-def transform_and_predict(raw_pipe_data:dict): # TODO: function parameter -> dag, df, model_id, raw_pipe_data:dict
-    df = pd.read_csv('../pressure_test.csv')
+
+# TODO: function parameter -> dag, df, model_id, raw_pipe_data:dict
+def transform_and_predict(dag: DAG, df, model_id, pipeline):
     """
     1. parse pipeline_dict to sklearn pipeline
     2. use the pipeline to transform the data
     3. pipeline.predict(X)
 
     """
-    clinet_pipeline = parse_client_pipeline(raw_pipe_data)
-    pipe = Pipeline(clinet_pipeline)
+    client_pipeline = parse_client_pipeline(pipeline)
+    pipe = Pipeline(client_pipeline)
     trans_data = pipe.fit_transform(df)
 
-    data_path = "../dev-container/volumn/global-server/DATA_FOLDER/model_global-server_admin_default-tag_2022-06-03_0.joblib"
+    dag_node = dag.get_node_attr(model_id)
+    if dag_node is False:
+        raise NameError('model not found')
+    data_path = dag_node['filepath']
     loaded_model = joblib.load(data_path)
     result = loaded_model.predict(trans_data)
     # print('res',result)
@@ -268,39 +289,114 @@ def parse_client_pipeline(raw_pipe_data):
 
     for character in ['collaborator', 'global-server']:
         pipe = raw_pipe_data[character]
-        
+
         for idx in range(len(pipe)):
             # print(pipe[idx])
             if(pipe[idx]['name'] != 'SaveData'):
-                
+
                 strp = pipe[idx]['name']+'()'
-                if check_fitted(eval(strp)) or (pipe[idx]['name'] in ref_list): 
+                if check_fitted(eval(strp)) or (pipe[idx]['name'] in ref_list):
                     continue
                 else:
                     ref_list.append(pipe[idx]['name'])
-                    sub_pipeline.append((pipe[idx]['name'],eval(strp)))
-            else: # SaveData
+                    sub_pipeline.append((pipe[idx]['name'], eval(strp)))
+            else:  # SaveData
                 continue
     return sub_pipeline
 
 
-
 def run_pipeline(dag, src_id, experiment_number):
+# def run_pipeline(rawpipe):
+    # 進到split 不進行save data
+    # 後面直接併成一整條pipeline
+
     pipeline_id = dag.get_node_attr(src_id)['pipeline_id']
     pipeline = find_pipeline_by_id(pipeline_id)
+    print('pipeline', pipeline)
 
-    parsed_pipeline = parse(pipeline, 'global-server')
-    # do pipeline (chung)
+    # # do pipeline (chung)
     pipe_param_string = parse_param(pipeline, 'global-server')
-    for sub_pipeline in parsed_pipeline:
-        sub_pipeline_param_list = pipe_param_string[parsed_pipeline.index(
-            sub_pipeline)]
-        src_id = build_pipeline(
-            dag, src_id, sub_pipeline, param_list=sub_pipeline_param_list, experiment_number=experiment_number)
+    parsed_pipeline = parse_global_pipeline(pipeline, "global-server")
+    # parsed_pipeline = parse_global_pipeline(raw_pipe, "global-server")
+    # print(parsed_pipeline)
 
-    return src_id
+    for sub_pipeline_idx in range(len(parsed_pipeline)):
+        sub_pipeline = parsed_pipeline[sub_pipeline_idx]
+        
+        if(sub_pipeline == 'train_test_split'):
+            src_id = train_test_split_training(parsed_pipeline[sub_pipeline_idx+1],src_id)
+            break # train test split 之後便直接後面剩下的pipeline 直到 model train完成
+        else:
+            # train_test_split 之前的node要儲存資料
+            sub_pipeline_param_list = pipe_param_string[parsed_pipeline.index(sub_pipeline)]
+            src_id = build_pipeline(dag, src_id, sub_pipeline, param_list=sub_pipeline_param_list, experiment_number=experiment_number)
+            
+
+        # sub_pipeline_param_list = pipe_param_string[parsed_pipeline.index(sub_pipeline)]
+        # src_id = build_pipeline(dag, src_id, sub_pipeline, param_list=sub_pipeline_param_list, experiment_number=experiment_number)
+
+    return parsed_pipeline
 
 
+
+def parse_global_pipeline(raw_pipe_data,character):
+    final_pipeline = []
+    param_pipeline = []
+    sub_pipeline = []
+    pipe = raw_pipe_data[character]
+    for idx in range(len(pipe)):
+        # print(pipe[idx])
+        if(pipe[idx]['name'] != 'SaveData' and pipe[idx]['name'] != 'train_test_split'):
+            strp = pipe[idx]['name']+'()'
+            if check_fitted(eval(strp)):
+                sub_pipeline.append(('model',eval(strp)))
+            else:
+                sub_pipeline.append((pipe[idx]['name'],eval(strp)))
+        elif(pipe[idx]['name'] == 'train_test_split'):
+            final_pipeline.append(sub_pipeline)
+            sub_pipeline = []
+            final_pipeline.append('train_test_split')
+        else:
+            final_pipeline.append(sub_pipeline)
+            final_pipeline.append(pipe[idx]['name'])
+            sub_pipeline = []      
+
+    final_pipeline.append(sub_pipeline)
+    return final_pipeline
+
+
+def train_test_split_training(model_pipeline, src_id):  
+    data_path = dag.get_node_attr(src_id)['filepath']
+    print(data_path)
+    # data_path = src_id
+    model_save_path = '../dev-container/volumn/global-server/DATA_FOLDER/model.joblib'
+    data = pd.read_csv(data_path)
+    print('traindata', data)
+    X = data[XHEADER]
+    y = data[YHEADER]
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33, random_state=42, stratify=y)
+
+    pipe = Pipeline(model_pipeline)
+
+
+    if(len(model_pipeline) >  1):
+        trans_pipe = Pipeline(model_pipeline[:-1])
+        # pipe.set_params(**param_list)
+        trans_data = trans_pipe.fit_transform(X_train,y_train)
+        X_train = pd.DataFrame(trans_data, columns = XHEADER)
+
+    
+    dump(pipe.steps[-1][1].fit(X_train, y_train),'model.joblib') 
+
+    # test model
+    loaded_model = joblib.load('model.joblib')
+    result = pipe.predict(X_test)
+    score = pipe.score(X_test,y_test)
+    # load(model_save_path)
+
+      
+
+        
 def find_greatest_exp_num(dag, pipeline_id, collection):
     # nids = dag.get_nodes_with_two_attributes(
     #     'pipeline_id', pipeline_id, 'collection', collection)
