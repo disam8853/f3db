@@ -188,7 +188,7 @@ def build_pipeline(dag, src_id, ops, param_list, x_header=XHEADER,y_header=YHEAD
             pipe.set_params(**param_list)
             trans_data = trans_pipe.fit_transform(X,y)
             X = pd.DataFrame(trans_data, columns = x_header)
-        print('chunggggg',X)
+
 
         node_id, node_info, node_filepath = generate_node(
             who=env('WHO'), user=env('USER'), experiment_number=experiment_number, tag=TAG, type='model', src_id=src_id, dag=dag)
@@ -216,7 +216,7 @@ def build_pipeline(dag, src_id, ops, param_list, x_header=XHEADER,y_header=YHEAD
         # print(final_data.shape)
         # final_data.columns = x_header.append(y_header)
         
-        print('after transform',final_data)
+        # print('after transform',final_data)
         save_data(node_filepath, final_data)
         dag.add_node(node_id, **node_info)
         dag.add_edge(src_id, node_id)
@@ -250,9 +250,9 @@ if __name__ == "__main__":
     op_data = [('pca', PCA()), ('scaler', StandardScaler())]
     dag = DAG(nx.MultiDiGraph())
     dag = build_pipeline(dag, 1, op_data)
-    print(dag.nodes_info)
+    # print(dag.nodes_info)
 
     op_model = [('pca', PCA()), ('scaler', StandardScaler()), ('svc', SVC())]
     dag = DAG(nx.MultiDiGraph())
     dag = build_pipeline(dag, 1, op_model)
-    print(dag.nodes_info)
+    # print(dag.nodes_info)

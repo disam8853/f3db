@@ -78,7 +78,7 @@ def build_root_data_node(dag, dataframe, collection_name, collection_version, pi
     
     save_data(node_filepath, dataframe)
     dag.add_node(node_id, **node_info)
-    print(dag.roots)
+    # print(dag.roots)
 
     return node_id
 
@@ -117,7 +117,7 @@ def generate_node_id(type="", who="", user="", tag="") -> str:
     return node_id
 
 def generate_node_filepath(folder, node_id, type):
-    print(type)
+    # print(type)
     if type == "model":
         format = '.joblib'
     else:
@@ -147,7 +147,7 @@ def generate_node(who, user, collection="", collection_version="", experiment_nu
                     'filepath': node_filepath
                 }
     else:
-        print("inherit dag")
+        # print("inherit dag")
         node_info = dag.get_node_attr(src_id)
         node_info['date'] = current_date()
         node_info['time'] = current_time()
@@ -166,7 +166,7 @@ XHEADER =  ['AGE','HBP_d_all_systolic', 'HBP_d_AM_systolic',
 YHEADER = 'CV'
 def build_pipeline(dag, src_id, ops, param_list, x_header=XHEADER,y_header=YHEADER,experiment_number=EXP_NUM, tag=TAG):
 
-    data_path = dag.get_node_attr(src_id)['filepath']
+    data_path = dag.get_node_attr(src_id)['filepath'] 
     dataframe = pd.read_csv(data_path)
     # print("build_pipeline: ", dataframe.head())
 
@@ -218,7 +218,8 @@ def build_pipeline(dag, src_id, ops, param_list, x_header=XHEADER,y_header=YHEAD
         # print(final_data.shape)
         # final_data.columns = x_header.append(y_header)
         
-        print('after transform',final_data)
+        # print('after transform',final_data)
+        # print('stephanie', node_filepath)
         save_data(node_filepath, final_data)
         dag.add_node(node_id, **node_info)
         dag.add_edge(src_id, node_id)

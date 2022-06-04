@@ -15,7 +15,7 @@ def read_raw_pipe():
 def check_fitted(clf): 
     X = np.array([[-1, -1], [-2, -1], [1, 1], [2, 1]])
     y = np.array([1, 1, 2, 2])
-    print(clf,hasattr(clf, "predict"))
+    # print(clf,hasattr(clf, "predict"))
     return hasattr(clf, "predict")
 def parse(raw_pipe_data, character):
     final_pipeline = []
@@ -79,11 +79,3 @@ def parse_param(raw_pipe_data, character):
     return final_pipeline_param
        
     
-if __name__ == "__main__":
-
-    raw_pipe_data = read_raw_pipe()
-    final_pipeline = parse(raw_pipe_data, 'global-server')
-    print(final_pipeline)
-
-    final_pipeline_param = parse_param(raw_pipe_data, 'global-server')
-    print(final_pipeline_param)
