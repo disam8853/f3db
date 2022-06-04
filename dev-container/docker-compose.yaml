@@ -67,6 +67,8 @@ services:
     restart: always
     environment:
       - MONGO_INITDB_DATABASE=f3db
+    logging:
+      driver: none
   mongo1:
     image: mongo
     volumes:
@@ -76,6 +78,8 @@ services:
     restart: always
     environment:
       - MONGO_INITDB_DATABASE=f3db
+    logging:
+      driver: none
   mongo2:
     image: mongo
     volumes:
@@ -85,6 +89,8 @@ services:
     restart: always
     environment:
       - MONGO_INITDB_DATABASE=f3db
+    logging:
+      driver: none
   mongo1-seed:
     image: mongo
     volumes:
