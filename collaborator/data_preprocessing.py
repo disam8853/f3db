@@ -22,6 +22,7 @@ def basic_data_transform(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def long_data_transform(lock, dag: DAG, df: pd.DataFrame, collection_name: str, pipeline_id: str, pipeline: dict, experiment_number: int) -> pd.DataFrame:
+    print("start long_data_transform")
     lock.acquire()
     """
     get all data node, compare collection_name

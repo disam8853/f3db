@@ -10,7 +10,7 @@ from merge import merge_pipeline
 from dag import DAG
 import pandas as pd
 from parse import parse, parse_param, check_fitted
-from f3db_pipeline import build_child_data_node, get_max_surrogate_number, generate_collection_version, compare_collection_version, build_root_data_node, build_pipeline
+from f3db_pipeline import run_pipeline, build_child_data_node, get_max_surrogate_number, generate_collection_version, compare_collection_version, build_root_data_node, build_pipeline
 from sklearn.svm import SVC
 from sklearn.decomposition import PCA
 import numpy as np
@@ -23,6 +23,7 @@ import os
 import requests
 from joblib import dump, load
 from utils import getexception, predict_and_convert_to_metric_str
+
 XHEADER =  ['AGE','HBP_d_all_systolic', 'HBP_d_AM_systolic',
        'HBP_d_PM_systolic', 'HBP_d_all_diastolic', 'HBP_d_AM_diastolic',
        'HBP_d_PM_diastolic', 'HBP_d_systolic_D1_AM1', 'HBP_d_systolic_D1_AM2',
@@ -196,7 +197,10 @@ def merge_pipeline_api():
                                     pipeline_id, experiment_number, collection)
             try:
                 # print('chungggg', src_id)
-                run_pipeline(dag, src_id, experiment_number)
+                pipeline_id = dag.get_node_attr(src_id)['pipeline_id']
+                pipeline = find_pipeline_by_id(pipeline_id)
+                run_pipeline(dag, src_id, experiment_number, pipeline)
+                
             except Exception as e:
                 getexception(e)
         except Exception as e:
@@ -303,97 +307,7 @@ def parse_client_pipeline(raw_pipe_data):
             else:  # SaveData
                 continue
     return sub_pipeline
-
-
-def run_pipeline(dag, src_id, experiment_number):
-# def run_pipeline(rawpipe):
-    # 進到split 不進行save data
-    # 後面直接併成一整條pipeline
-
-    pipeline_id = dag.get_node_attr(src_id)['pipeline_id']
-    pipeline = find_pipeline_by_id(pipeline_id)
-    # print('pipeline', pipeline)
-
-    # # do pipeline (chung)
-    pipe_param_string = parse_param(pipeline, 'global-server')
-    parsed_pipeline = parse_global_pipeline(pipeline, "global-server")
-    # parsed_pipeline = parse_global_pipeline(raw_pipe, "global-server")
-    # print(parsed_pipeline)
-
-    for sub_pipeline_idx in range(len(parsed_pipeline)):
-        sub_pipeline = parsed_pipeline[sub_pipeline_idx]
-        
-        if(sub_pipeline == 'train_test_split'):
-            src_id = train_test_split_training(parsed_pipeline[sub_pipeline_idx+1],src_id)
-            break # train test split 之後便直接後面剩下的pipeline 直到 model train完成
-        else:
-            # train_test_split 之前的node要儲存資料
-            sub_pipeline_param_list = pipe_param_string[parsed_pipeline.index(sub_pipeline)]
-            src_id = build_pipeline(dag, src_id, sub_pipeline, param_list=sub_pipeline_param_list, experiment_number=experiment_number)
-            
-
-
-    return parsed_pipeline
-
-
-
-def parse_global_pipeline(raw_pipe_data,character):
-    final_pipeline = []
-    param_pipeline = []
-    sub_pipeline = []
-    pipe = raw_pipe_data[character]
-    for idx in range(len(pipe)):
-        # print(pipe[idx])
-        if(pipe[idx]['name'] != 'SaveData' and pipe[idx]['name'] != 'train_test_split'):
-            strp = pipe[idx]['name']+'()'
-            if check_fitted(eval(strp)):
-                sub_pipeline.append(('model',eval(strp)))
-            else:
-                sub_pipeline.append((pipe[idx]['name'],eval(strp)))
-        elif(pipe[idx]['name'] == 'train_test_split'):
-            final_pipeline.append(sub_pipeline)
-            sub_pipeline = []
-            final_pipeline.append('train_test_split')
-        else:
-            final_pipeline.append(sub_pipeline)
-            final_pipeline.append(pipe[idx]['name'])
-            sub_pipeline = []      
-
-    final_pipeline.append(sub_pipeline)
-    return final_pipeline
-
-
-def train_test_split_training(model_pipeline, src_id):  # TODO : Model parameter (train_test_split)
-    data_path = dag.get_node_attr(src_id)['filepath']
-    data = pd.read_csv(data_path)
-
-
-    X = data[XHEADER]
-    y = data[YHEADER]
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33, random_state=42, stratify=y)
-
-    pipe = Pipeline(model_pipeline)
-
-    # before model
-    if(len(model_pipeline) >  1):
-        trans_pipe = Pipeline(model_pipeline[:-1])
-        # pipe.set_params(**param_list)
-        trans_data = trans_pipe.fit_transform(X_train,y_train)
-        X_train = pd.DataFrame(trans_data, columns = XHEADER)
-
-    # fit model
-    dump(pipe.steps[-1][1].fit(X_train, y_train),'model.joblib')  # TODO: model path need to be modified
-
-    # test model
-    loaded_model = joblib.load('model.joblib') # TODO: model path need to be modified
-    y_pred = pipe.predict(X_test)
-    # accuracy = 
-    test_results = predict_and_convert_to_metric_str(y_test,y_pred)
-
-    print('testing data result : ', test_results)
-
-
-      
+ 
 
         
 def find_greatest_exp_num(dag, pipeline_id, collection):
