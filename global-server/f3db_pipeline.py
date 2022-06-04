@@ -14,17 +14,21 @@ from joblib import dump, load
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.datasets import make_classification
 from sklearn.decomposition import PCA
+from sklearn.ensemble import *
+from sklearn.linear_model import *
 from sklearn.model_selection import *
 from sklearn.model_selection import train_test_split
+from sklearn.neighbors import *
 from sklearn.neighbors import NearestNeighbors
 # from bobo_pipeline import Pipeline
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import *
-from sklearn.preprocessing import MinMaxScaler, FunctionTransformer, StandardScaler
+from sklearn.preprocessing import (FunctionTransformer, MinMaxScaler,
+                                   StandardScaler)
+from sklearn.svm import *
 from sklearn.svm import SVC
 from sklearn.utils.validation import check_is_fitted
-from sklearn.linear_model import *
-from sklearn.svm import *
+
 from dag import DAG
 
 from utils import current_date, current_time, predict_and_convert_to_metric_str
@@ -166,6 +170,7 @@ def generate_node(who, user, collection="", collection_version="", experiment_nu
         node_info['experiment_number'] = experiment_number
         node_info['operation'] = ""
         node_info['filepath'] = node_filepath
+        node_info['metrics'] = metrics
     
     return node_id, node_info, node_filepath
 
