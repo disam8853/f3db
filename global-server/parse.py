@@ -6,6 +6,7 @@ from sklearn.svm import SVC
 from sklearn.decomposition import PCA
 import numpy as np
 from sklearn.linear_model import LinearRegression
+from sklearn.preprocessing import *
 
 def read_raw_pipe():
     with open('test.json') as f:

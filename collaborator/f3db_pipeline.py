@@ -1,50 +1,29 @@
-# TODO: insert pipeline operations into dag node
-# TODO: 
-
 import os
 import pickle
 from platform import node
 from random import choice, randrange
-import pandas as pd
+
 import networkx as nx
 import numpy as np
+import pandas as pd
+from environs import Env
+from joblib import dump, load
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.datasets import make_classification
 from sklearn.decomposition import PCA
+from sklearn.model_selection import *
 from sklearn.model_selection import train_test_split
 from sklearn.neighbors import NearestNeighbors
 # from bobo_pipeline import Pipeline
 from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import *
 from sklearn.preprocessing import FunctionTransformer, StandardScaler
 from sklearn.svm import SVC
 from sklearn.utils.validation import check_is_fitted
 
 from dag import DAG
-from utils import current_date, current_time
-from joblib import dump, load
-from environs import Env
 from parse import parse, parse_param
-"""
-def psudocode():
-
-
-    x, y = read_data(rid)
-    op = [('pca', PCA()), ('scaler', StandardScaler())]
-    pipe = Pipeline(op)
-    # The pipeline can be used as any other estimator
-    # and avoids leaking the test set into the train set
-    pipe.fit(X_train, y_train)
-    if op[-1] is model:
-        x = pipe.model_weight
-        id, path = save_model()
-    else:
-        x = pipe.transform_data
-        id, path = save_data()
-    
-    dag.add_node(id, path=path)
-    dag.add_edge(rid , id)
-
-""" 
+from utils import current_date, current_time
 
 DATA_FOLDER = "./DATA_FOLDER/"
 try:

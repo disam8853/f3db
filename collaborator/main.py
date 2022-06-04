@@ -127,15 +127,7 @@ def process_data():
     except Exception as e:
         return make_response(jsonify(error='pipeline not found'), 404)
 
-    # df = pd.DataFrame([[1,2],[3,4]])
-    # long proces
-    # heavy_process = Process(  # Create a daemonic process with heavy "my_func"
-    #     target=long_data_transform,
-    #     args=(dag, df, collection, pipeline_id, pipeline),
-    #     daemon=True
-    # )
 
-    import time
 
     heavy_process = Thread(
         target=long_data_transform,

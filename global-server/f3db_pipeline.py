@@ -1,33 +1,32 @@
 # TODO: insert pipeline operations into dag node
 # TODO: 
-from sklearn.model_selection import train_test_split
-from sklearn.model_selection import *
-from sklearn.preprocessing import *
-from sklearn.model_selection import *
 import os
 import pickle
 from platform import node
 from random import choice, randrange
-import pandas as pd
+
+import joblib
 import networkx as nx
 import numpy as np
+import pandas as pd
+from environs import Env
+from joblib import dump, load
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.datasets import make_classification
 from sklearn.decomposition import PCA
+from sklearn.model_selection import *
 from sklearn.model_selection import train_test_split
 from sklearn.neighbors import NearestNeighbors
 # from bobo_pipeline import Pipeline
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import FunctionTransformer, StandardScaler
+from sklearn.preprocessing import *
+from sklearn.preprocessing import MinMaxScaler, FunctionTransformer, StandardScaler
 from sklearn.svm import SVC
 from sklearn.utils.validation import check_is_fitted
-from parse import parse, parse_param, check_fitted
+
 from dag import DAG
+from parse import check_fitted, parse, parse_param
 from utils import current_date, current_time, predict_and_convert_to_metric_str
-from joblib import dump, load
-from environs import Env
-from parse import parse, parse_param
-import joblib
 
 """
 def psudocode():
