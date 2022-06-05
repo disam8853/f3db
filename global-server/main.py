@@ -219,7 +219,7 @@ async def get_pipeline_status(pipeline_id):
         if attr is None:
             return Response(f'Must provide correct {attr} in query parameter!', 400)
     cond = [("collection", collection), ("experiment_number",
-                                         int(experiment_number)), ("pipeline_id", pipeline_id), ("type", "model")]
+                                         str(experiment_number)), ("pipeline_id", pipeline_id), ("type", "model")]
     nids = dag.get_nodes_with_condition(cond)
     if len(nids) == 0:
         return Response('there is no model found', 400)
