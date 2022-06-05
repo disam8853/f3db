@@ -17,6 +17,7 @@ from sklearn.linear_model import *
 from sklearn.model_selection import *
 from sklearn.model_selection import train_test_split
 from sklearn.neighbors import *
+from sklearn.impute import *
 from sklearn.neighbors import NearestNeighbors
 # from bobo_pipeline import Pipeline
 from sklearn.pipeline import Pipeline
@@ -48,6 +49,10 @@ COLLECTION_VERSION = 0
 EXP_NUM = 0
 env = Env()
 env.read_env()
+
+XHEADER = ['HBP_d_all_systolic','HBP_d_AM_systolic','HBP_d_PM_systolic','HBP_d_all_diastolic','HBP_d_AM_diastolic','HBP_d_PM_diastolic','HBP_d_systolic_D1_AM1','AGE','aspirin']
+YHEADER = 'CV'
+
 
 def compare_collection_version(version1, version2):
     if version1 == version2:
@@ -111,15 +116,15 @@ def generate_node_filepath(folder, node_id, type):
 
     return os.path.join(folder, node_id + format)
 
-def generate_node(who, user, collection="", collection_version="", experiment_number=EXP_NUM, pipeline_id="", tag=TAG, type='data', metrics="" , folder=DATA_FOLDER, node_id="", src_id="", dag=None):
+def generate_node(who, user, collection="", collection_version="", experiment_number=EXP_NUM, pipeline_id="", tag=TAG, type='data', metrics="", operation="", folder=DATA_FOLDER, XHEADER="", YHEADER="", node_id="", src_id="", dag=None):
     if node_id == "":
         node_id = generate_node_id(type, who, user, tag, experiment_number)
 
     node_filepath = generate_node_filepath(folder, node_id, type)
-
+    print(f"node_id : {node_id}")
     if src_id == "" and dag is None:
         node_info = {
-                    'id': node_id,
+                    'node_id': node_id,
                     'who': who,
                     'user': user,
                     'date': current_date(),
@@ -130,28 +135,27 @@ def generate_node(who, user, collection="", collection_version="", experiment_nu
                     'tag': tag,
                     'type': type, # data or model
                     'pipeline_id': pipeline_id, # comma seperate, global server has 1 id, collab has many id
-                    'operation': "", # comma seperate
+                    'operation': operation, # comma seperate
                     'filepath': node_filepath,
                     'metrics': metrics,
-                    'x_headers': "", # comma seperate, global server has 1 id, collab has many id -> list of strings
-                    'y_headers': "",
+                    'XHEADER': XHEADER, # comma seperate
+                    'YHEADER': YHEADER,
                 }
     else:
         node_info = dag.get_node_attr(src_id)
-        node_info['id'] = node_id
+        node_info['node_id'] = node_id
         node_info['date'] = current_date()
         node_info['time'] = current_time()
         node_info['tag'] = tag
         node_info['type'] = type 
         node_info['experiment_number'] = experiment_number
-        node_info['operation'] = ""
+        node_info['operation'] = operation
         node_info['filepath'] = node_filepath
         node_info['metrics'] = metrics
     
     return node_id, node_info, node_filepath
 
-XHEADER = ['HBP_d_all_systolic','HBP_d_AM_systolic','HBP_d_PM_systolic','HBP_d_all_diastolic','HBP_d_AM_diastolic','HBP_d_PM_diastolic','HBP_d_systolic_D1_AM1','AGE','aspirin']
-YHEADER = 'CV'
+
 def build_pipeline(dag, src_id, ops, param_list, x_header=XHEADER,y_header=YHEADER,experiment_number=EXP_NUM, tag=TAG):
 
     data_path = dag.get_node_attr(src_id)['filepath'] 
@@ -219,15 +223,23 @@ def build_pipeline(dag, src_id, ops, param_list, x_header=XHEADER,y_header=YHEAD
         # print('EWW',final_data)
         return node_id
 
-def run_pipeline(dag, src_id, experiment_number, pipeline):
+def run_pipeline(dag, src_id, experiment_number, pipeline, from_begin=False):
 # def run_pipeline(rawpipe):
     # 進到split 不進行save data
     # 後面直接併成一整條pipeline
 
 
     # # do pipeline (chung)
-    pipe_param_string = parse_global_param(pipeline, 'global-server')
-    parsed_pipeline = parse_global_pipeline(pipeline, "global-server")
+    pipe_param_string = []
+    if from_begin == True:
+        pipe_param_string += parse_global_param(pipeline, 'collaborator')
+    pipe_param_string += parse_global_param(pipeline, 'global-server')
+    
+    parsed_pipeline = []
+    if from_begin == True:
+        parsed_pipeline += parse_global_pipeline(pipeline, 'collaborator')
+    parsed_pipeline += parse_global_pipeline(pipeline, "global-server")
+    
     # parsed_pipeline = parse_global_pipeline(raw_pipe, "global-server")
     print('PipeParam',pipe_param_string,parsed_pipeline)
 
@@ -247,12 +259,11 @@ def run_pipeline(dag, src_id, experiment_number, pipeline):
 
 def parse_global_pipeline(raw_pipe_data,character):
     final_pipeline = []
-    param_pipeline = []
     sub_pipeline = []
     pipe = raw_pipe_data[character]
     for idx in range(len(pipe)):
         # print(pipe[idx])
-        if(pipe[idx]['name'] != 'train_test_split'):
+        if(pipe[idx]['name'] != 'train_test_split' and pipe[idx]['name'] != 'SaveData'):
             strp = pipe[idx]['name']+'()'
             if check_fitted(eval(strp)):
                 sub_pipeline.append(('model',eval(strp)))
@@ -267,6 +278,9 @@ def parse_global_pipeline(raw_pipe_data,character):
             final_pipeline.append(sub_pipeline)
             sub_pipeline = []
             final_pipeline.append('train_test_split')
+        elif(pipe[idx]['name'] == 'SaveData'):
+            final_pipeline.append(sub_pipeline)
+            sub_pipeline = []
    
 
     final_pipeline.append(sub_pipeline)

@@ -64,30 +64,30 @@ def long_data_transform(lock, dag: DAG, df: pd.DataFrame, collection_name: str, 
 
     # reuse old node
     else:
-        pass
+        
+        sep = src_id.split("_")
+        sep[1] = env('WHO')
+        src_id = "_".join(sep)
+        print(src_id)
+    
+    if len(pipeline['collaborator']) > 0:
+        # parse: pipeline dict to real pipline (chung)
+        parsed_pipeline = parse(pipeline, 'collaborator')
 
-    # parse: pipeline dict to real pipline (chung)
-    parsed_pipeline = parse(pipeline, 'collaborator')
+        # do pipeline (chung)
+        pipe_param_string = parse_param(pipeline, 'collaborator')
+        # print(pipe_param_string)
+        for sub_pipeline in parsed_pipeline:
+            sub_pipeline_param_list = pipe_param_string[parsed_pipeline.index(
+                sub_pipeline)]
 
-    # do pipeline (chung)
-    pipe_param_string = parse_param(pipeline, 'collaborator')
-    # print(pipe_param_string)
-    for sub_pipeline in parsed_pipeline:
-        sub_pipeline_param_list = pipe_param_string[parsed_pipeline.index(
-            sub_pipeline)]
-
-        if(parsed_pipeline.index(sub_pipeline) == 0):
-            src_id = build_pipeline(
-                dag, src_id, sub_pipeline, param_list=sub_pipeline_param_list, experiment_number=experiment_number)
-        else:
-            src_id = build_pipeline(
-                dag, src_id, sub_pipeline, param_list=sub_pipeline_param_list, experiment_number=experiment_number)
-
-    # import time
-    # for i in range(3):
-    #     print(i)
-    #     time.sleep(1)
-
+            if(parsed_pipeline.index(sub_pipeline) == 0):
+                src_id = build_pipeline(
+                    dag, src_id, sub_pipeline, param_list=sub_pipeline_param_list, experiment_number=experiment_number)
+            else:
+                src_id = build_pipeline(
+                    dag, src_id, sub_pipeline, param_list=sub_pipeline_param_list, experiment_number=experiment_number)
+    
     send_result_to_global_server(dag, pipeline_id, src_id)
 
     lock.release()
