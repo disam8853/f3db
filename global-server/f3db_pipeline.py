@@ -151,15 +151,17 @@ def generate_node(who, user, collection="", collection_version="", experiment_nu
     return node_id, node_info, node_filepath
 
 
-def build_pipeline(dag, src_id, ops, param_list, x_header=XHEADER,y_header=YHEADER,experiment_number=EXP_NUM, tag=TAG):
+def build_pipeline(dag, src_id, ops, param_list, experiment_number=EXP_NUM, tag=TAG):
+    Xheader = dag.get_node_attr(src_id)['x_headers']
+    Yheader = dag.get_node_attr(src_id)['y_headers']
 
     data_path = dag.get_node_attr(src_id)['filepath'] 
     dataframe = pd.read_csv(data_path)
 
-    X = dataframe.drop(y_header, axis=1, errors="ignore") # TODO: change header to number or catch exception or record the header change in pipeline (recommand)
+    X = dataframe.drop(Yheader, axis=1, errors="ignore") # TODO: change header to number or catch exception or record the header change in pipeline (recommand)
     X = X.drop('_id', axis=1, errors="ignore")
 
-    y =  dataframe[y_header] # sklearn will drop header after some data transformation
+    y =  dataframe[Yheader] # sklearn will drop header after some data transformation
     pipe_string = parse_pipe_to_string(ops)
     print('global pipe string: ',pipe_string)
     pipe = Pipeline(ops)
@@ -172,11 +174,11 @@ def build_pipeline(dag, src_id, ops, param_list, x_header=XHEADER,y_header=YHEAD
             trans_pipe = Pipeline(ops[:-1])
             pipe.set_params(**param_list)
             trans_data = trans_pipe.fit_transform(X,y)
-            X = pd.DataFrame(trans_data, columns = x_header)
+            X = pd.DataFrame(trans_data, columns = Xheader)
 
 
         node_id, node_info, node_filepath = generate_node(
-            who=env('WHO'), user=env('USER'), experiment_number=experiment_number, tag=TAG, type='model', src_id=src_id, dag=dag, operation=pipe_string)
+            who=env('WHO'), user=env('USER'), experiment_number=experiment_number, tag=TAG, type='model', src_id=src_id, dag=dag, operation=pipe_string,x_headers=Xheader, y_headers=Yheader)
         pipe.set_params(**param_list)
         
         save_model(node_filepath, pipe.steps[-1][1].fit(X,y))
@@ -196,12 +198,12 @@ def build_pipeline(dag, src_id, ops, param_list, x_header=XHEADER,y_header=YHEAD
     else:
     
         node_id, node_info, node_filepath = generate_node(
-            who=env('WHO'), user=env('USER'), experiment_number=experiment_number, tag=TAG, type='data', src_id=src_id, dag=dag, operation=pipe_string)
+            who=env('WHO'), user=env('USER'), experiment_number=experiment_number, tag=TAG, type='data', src_id=src_id, dag=dag, operation=pipe_string,x_headers=Xheader, y_headers=Yheader)
         print('is data')
         pipe.set_params(**param_list)
         trans_data = pipe.fit_transform(X,y)
         
-        trans_pd_data = pd.DataFrame(trans_data, columns = x_header) # TODO: if columns change, detect and do sth
+        trans_pd_data = pd.DataFrame(trans_data, columns = Xheader) # TODO: if columns change, detect and do sth
 
         
         y = pd.DataFrame(y)
@@ -218,7 +220,8 @@ def run_pipeline(dag, src_id, experiment_number, pipeline, from_begin=False):
     # 進到split 不進行save data
     # 後面直接併成一整條pipeline
 
-
+    Xheader = dag.get_node_attr(src_id)['x_headers']
+    Yheader = dag.get_node_attr(src_id)['y_headers']
     # # do pipeline (chung)
     pipe_param_string = []
     if from_begin == True:
@@ -237,11 +240,12 @@ def run_pipeline(dag, src_id, experiment_number, pipeline, from_begin=False):
         sub_pipeline = parsed_pipeline[sub_pipeline_idx]
         sub_pipeline_param_list = pipe_param_string[sub_pipeline_idx]
         if(sub_pipeline == 'train_test_split'):
-            src_id = train_test_split_training(dag, parsed_pipeline[sub_pipeline_idx+1],src_id, sub_pipeline_param_list)
+            src_id = train_test_split_training(dag, parsed_pipeline[sub_pipeline_idx+1],src_id,param_list = sub_pipeline_param_list)
             break # train test split 之後便直接後面剩下的pipeline 直到 model train完成
         else:
             # train_test_split 之前的node要儲存資料
             # sub_pipeline_param_list = pipe_param_string[parsed_pipeline.index(sub_pipeline)]
+
             src_id = build_pipeline(dag, src_id, sub_pipeline, param_list=sub_pipeline_param_list, experiment_number=experiment_number)
 
     return parsed_pipeline
@@ -277,17 +281,20 @@ def parse_global_pipeline(raw_pipe_data,character):
     return final_pipeline
 
 
-def train_test_split_training(dag, model_pipeline, src_id, param_list):  # TODO : Model parameter (train_test_split)
+def train_test_split_training(dag, model_pipeline, src_id,param_list):  # TODO : Model parameter (train_test_split)
     print("start train test split")
     data_path = dag.get_node_attr(src_id)['filepath']
     experiment_number = dag.get_node_attr(src_id)['experiment_number']
     pipe_string = 'train_test_split,' + parse_pipe_to_string(model_pipeline)
     print('global train test split  pipe string: ',pipe_string)
     data = pd.read_csv(data_path)
-
-
-    X = data[XHEADER]
-    y = data[YHEADER]
+    print('yeyeye:',data)
+    Xheader = dag.get_node_attr(src_id)['x_headers']
+    Xheader = Xheader.split(',')
+    Yheader = dag.get_node_attr(src_id)['y_headers']
+    # print('ttttttttt', )
+    X = data[Xheader]
+    y = data[[Yheader]]
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33, random_state=42, stratify=y)
 
     pipe = Pipeline(model_pipeline)
@@ -297,7 +304,7 @@ def train_test_split_training(dag, model_pipeline, src_id, param_list):  # TODO 
         trans_pipe = Pipeline(model_pipeline[:-1])
         
         trans_data = trans_pipe.fit_transform(X_train,y_train)
-        X_train = pd.DataFrame(trans_data, columns = XHEADER)
+        X_train = pd.DataFrame(trans_data)
     pipe.set_params(**param_list)
     # print('pppppp', param_list)
     clf = pipe.steps[-1][1].fit(X_train, y_train)
@@ -308,7 +315,7 @@ def train_test_split_training(dag, model_pipeline, src_id, param_list):  # TODO 
 
     # add to dag
     node_id, node_info, node_filepath = generate_node(
-            who=env('WHO'), user=env('USER'), experiment_number=experiment_number, metrics=test_results, tag=TAG, type='model', src_id=src_id, dag=dag, operation=pipe_string)
+            who=env('WHO'), user=env('USER'), experiment_number=experiment_number, metrics=test_results, tag=TAG, type='model', src_id=src_id, dag=dag, operation=pipe_string,)
     
     save_model(node_filepath, clf)
     dag.add_node(node_id, **node_info)

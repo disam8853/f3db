@@ -69,8 +69,11 @@ def long_data_transform(lock, dag: DAG, df: pd.DataFrame, collection_name: str, 
         sep[1] = env('WHO')
         src_id = "_".join(sep)
         print(src_id)
+
     
     if len(pipeline['collaborator']) > 0:
+        Xheader = dag.get_node_attr(src_id)['x_headers']
+        Yheader = dag.get_node_attr(src_id)['y_headers']
         # parse: pipeline dict to real pipline (chung)
         parsed_pipeline = parse(pipeline, 'collaborator')
 
@@ -83,10 +86,10 @@ def long_data_transform(lock, dag: DAG, df: pd.DataFrame, collection_name: str, 
 
             if(parsed_pipeline.index(sub_pipeline) == 0):
                 src_id = build_pipeline(
-                    dag, src_id, sub_pipeline, param_list=sub_pipeline_param_list, experiment_number=experiment_number)
+                    dag, src_id, sub_pipeline,param_list=sub_pipeline_param_list, experiment_number=experiment_number)
             else:
                 src_id = build_pipeline(
-                    dag, src_id, sub_pipeline, param_list=sub_pipeline_param_list, experiment_number=experiment_number)
+                    dag, src_id, sub_pipeline,param_list=sub_pipeline_param_list, experiment_number=experiment_number)
     
     send_result_to_global_server(dag, pipeline_id, src_id)
 
