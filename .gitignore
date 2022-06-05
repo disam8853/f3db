@@ -6,6 +6,9 @@ container/dataMongo
 dev-container/volumn/**/mongodb
 dev-container/dataMongo
 
+dev2-container/volumn/**/mongodb
+dev2-container/dataMongo
+
 .DS_Store
 
 graph.ipynb
