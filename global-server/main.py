@@ -325,7 +325,7 @@ def parse_client_pipeline(raw_pipe_data):
 
         for idx in range(len(pipe)):
             # print(pipe[idx])
-            if(pipe[idx]['name'] != 'SaveData'):
+            if(pipe[idx]['name'] != 'SaveData' and pipe[idx]['name'] != 'train_test_split') :
 
                 strp = pipe[idx]['name']+'()'
                 if check_fitted(eval(strp)) or (pipe[idx]['name'] in ref_list):

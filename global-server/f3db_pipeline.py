@@ -293,7 +293,7 @@ def train_test_split_training(dag, model_pipeline, src_id, param_list):  # TODO 
         trans_data = trans_pipe.fit_transform(X_train,y_train)
         X_train = pd.DataFrame(trans_data, columns = XHEADER)
     pipe.set_params(**param_list)
-    print('pppppp', param_list)
+    # print('pppppp', param_list)
     clf = pipe.steps[-1][1].fit(X_train, y_train)
     # test model
     y_pred = pipe.predict(X_test)
