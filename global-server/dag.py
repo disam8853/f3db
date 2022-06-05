@@ -8,6 +8,7 @@ from utils import current_time, current_date, getexception
 from functools import singledispatch, update_wrapper
 import json
 import numpy as np
+from operator import ge, le
 
 class NpEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -227,7 +228,7 @@ class DAG():
 
     def get_max_attribute_node(self, node_id_list, attribute) -> DAG:
 
-        max_attribute = 0
+        max_attribute = "0"
         for node_id in node_id_list:
             node = self.get_node_attr(node_id)
             attr_value = node[attribute]
@@ -235,6 +236,24 @@ class DAG():
                 max_attribute = attr_value
 
         return max_attribute
+
+    def get_best_node_by_attribute(self, node_id_list: list, attribute:str, sign:function=None):
+        if sign is None:
+            sign = ge # dafault is greate than
+        if type(sign) is str:
+            if sign == ">":
+                sign = ge
+            elif sign == "<":
+                sign = le
+        best_value = 0
+        for index, node_id in enumerate(node_id_list):
+            node = self.get_node_attr(node_id)
+            if index == 0:
+                best_value = node[attribute]
+            attr_value = node[attribute]
+            if not sign(best_value, attr_value):
+                best_value = attr_value
+        return best_value
 
 
             

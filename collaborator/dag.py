@@ -57,6 +57,7 @@ class DAG():
         self.number_of_nodes = 0
         self.type = None
         self.init_attributes = {
+                'id': "",
                 'who': 'global-server',
                 'user': 'bobo',
                 'date': current_date(),

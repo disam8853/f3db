@@ -21,7 +21,7 @@ def basic_data_transform(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def long_data_transform(lock, dag: DAG, df: pd.DataFrame, collection_name: str, pipeline_id: str, pipeline: dict, experiment_number: int) -> pd.DataFrame:
+def long_data_transform(lock, dag: DAG, df: pd.DataFrame, collection_name: str, pipeline_id: str, pipeline: dict, experiment_number: int, src_id:str="") -> pd.DataFrame:
     print("start long_data_transform")
     lock.acquire()
     """
@@ -36,30 +36,35 @@ def long_data_transform(lock, dag: DAG, df: pd.DataFrame, collection_name: str, 
         if not same:
             create data node with collection + surrogate_id
     """
+    # create new node
+    if src_id == "":
+        # get all data node, compare collection_name
+        last_data_version = get_max_surrogate_number(DATA_FOLDER, collection_name)
+        new_collection_version = generate_collection_version(df)
+        # if no exist data with same collection_name:
+        if last_data_version == -1:
+            new_node_id = "_".join(['root', collection_name, env('WHO'), '0'])
+            src_id = build_root_data_node(dag, df, collection_name, new_collection_version,
+                                        pipeline_id, experiment_number, new_node_id=new_node_id)
 
-    # get all data node, compare collection_name
-    last_data_version = get_max_surrogate_number(DATA_FOLDER, collection_name)
-    new_collection_version = generate_collection_version(df)
-    # if no exist data with same collection_name:
-    if last_data_version == -1:
-        new_node_id = "_".join(['root', collection_name, env('WHO'), '0'])
-        src_id = build_root_data_node(dag, df, collection_name, new_collection_version,
-                                      pipeline_id, experiment_number, new_node_id=new_node_id)
-
-    # if exist data with same collection_name, find data node, compare two dataset:
-    else:
-        last_node_id = "_".join(['root', collection_name, env('WHO'), str(last_data_version)])
-        last_node = dag.get_node_attr(last_node_id)
-        last_collection_version = last_node['collection_version']
-        # if same: get src_id
-        if compare_collection_version(new_collection_version, last_collection_version):
-            src_id = last_node_id
-        # if not same: create data node with collection + surrogate_id
+        # if exist data with same collection_name, find data node, compare two dataset:
         else:
-            new_src_id = "_".join(
-                [collection_name, str(last_data_version + 1)])
-            src_id = build_child_data_node(
-                dag, df, collection_name, new_collection_version, experiment_number, last_node_id, new_src_id)
+            last_node_id = "_".join(['root', collection_name, env('WHO'), str(last_data_version)])
+            last_node = dag.get_node_attr(last_node_id)
+            last_collection_version = last_node['collection_version']
+            # if same: get src_id
+            if compare_collection_version(new_collection_version, last_collection_version):
+                src_id = last_node_id
+            # if not same: create data node with collection + surrogate_id
+            else:
+                new_src_id = "_".join(
+                    [collection_name, str(last_data_version + 1)])
+                src_id = build_child_data_node(
+                    dag, df, collection_name, new_collection_version, experiment_number, last_node_id, new_src_id)
+
+    # reuse old node
+    else:
+        pass
 
     # parse: pipeline dict to real pipline (chung)
     parsed_pipeline = parse(pipeline, 'collaborator')

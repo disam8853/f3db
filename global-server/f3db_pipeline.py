@@ -1,5 +1,3 @@
-# TODO: insert pipeline operations into dag node
-# TODO: 
 import os
 import pickle
 from platform import node
@@ -35,28 +33,6 @@ from utils import current_date, current_time, predict_and_convert_to_metric_str
 from joblib import dump, load
 from environs import Env
 from parse import check_fitted, parse, parse_global_param
-
-"""
-def psudocode():
-
-
-    x, y = read_data(rid)
-    op = [('pca', PCA()), ('scaler', StandardScaler())]
-    pipe = Pipeline(op)
-    # The pipeline can be used as any other estimator
-    # and avoids leaking the test set into the train set
-    pipe.fit(X_train, y_train)
-    if op[-1] is model:
-        x = pipe.model_weight
-        id, path = save_model()
-    else:
-        x = pipe.transform_data
-        id, path = save_data()
-    
-    dag.add_node(id, path=path)
-    dag.add_edge(rid , id)
-
-""" 
 
 DATA_FOLDER = "./DATA_FOLDER/"
 try:
@@ -119,15 +95,14 @@ def get_max_surrogate_number(path, prefix) -> int:
     return max(version_nums)
     
 
-def generate_node_id(type="", who="", user="", tag="") -> str:
+def generate_node_id(type="", who="", user="", tag="", experiment_number="") -> str:
     date = current_date()
-    node_id = '_'.join([type, who, user, tag, date])
+    node_id = '_'.join([type, who, user, date, experiment_number])
     version_num = "_" + str(get_max_surrogate_number(DATA_FOLDER, node_id) + 1)
     node_id += version_num
     return node_id
 
 def generate_node_filepath(folder, node_id, type):
-    # print(type)
     if type == "model":
         format = '.joblib'
     else:
@@ -137,12 +112,13 @@ def generate_node_filepath(folder, node_id, type):
 
 def generate_node(who, user, collection="", collection_version="", experiment_number=EXP_NUM, pipeline_id="", tag=TAG, type='data', metrics="" , folder=DATA_FOLDER, node_id="", src_id="", dag=None):
     if node_id == "":
-        node_id = generate_node_id(type, who, user, tag)
+        node_id = generate_node_id(type, who, user, tag, experiment_number)
 
     node_filepath = generate_node_filepath(folder, node_id, type)
 
     if src_id == "" and dag is None:
         node_info = {
+                    'id': node_id,
                     'who': who,
                     'user': user,
                     'date': current_date(),
@@ -160,8 +136,8 @@ def generate_node(who, user, collection="", collection_version="", experiment_nu
                     'y_headers': "",
                 }
     else:
-        # print("inherit dag")
         node_info = dag.get_node_attr(src_id)
+        node_info['id'] = node_id
         node_info['date'] = current_date()
         node_info['time'] = current_time()
         node_info['tag'] = tag
@@ -173,16 +149,12 @@ def generate_node(who, user, collection="", collection_version="", experiment_nu
     
     return node_id, node_info, node_filepath
 
-XHEADER =  ['AGE','HBP_d_all_systolic', 'HBP_d_AM_systolic',
-       'HBP_d_PM_systolic', 'HBP_d_all_diastolic', 'HBP_d_AM_diastolic',
-       'HBP_d_PM_diastolic', 'HBP_d_systolic_D1_AM1', 'HBP_d_systolic_D1_AM2',
-       'aspirin']
+XHEADER = ['HBP_d_all_systolic','HBP_d_AM_systolic','HBP_d_PM_systolic','HBP_d_all_diastolic','HBP_d_AM_diastolic','HBP_d_PM_diastolic','HBP_d_systolic_D1_AM1','AGE','aspirin']
 YHEADER = 'CV'
 def build_pipeline(dag, src_id, ops, param_list, x_header=XHEADER,y_header=YHEADER,experiment_number=EXP_NUM, tag=TAG):
 
     data_path = dag.get_node_attr(src_id)['filepath'] 
     dataframe = pd.read_csv(data_path)
-    # print("build_pipeline: ", dataframe.head())
 
     X = dataframe.drop(y_header, axis=1, errors="ignore") # TODO: change header to number or catch exception or record the header change in pipeline (recommand)
     X = X.drop('_id', axis=1, errors="ignore")

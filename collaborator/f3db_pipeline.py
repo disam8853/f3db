@@ -2,7 +2,7 @@ import os
 import pickle
 from platform import node
 from random import choice, randrange
-
+import joblib
 import networkx as nx
 import numpy as np
 import pandas as pd
@@ -11,8 +11,11 @@ from joblib import dump, load
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.datasets import make_classification
 from sklearn.decomposition import PCA
+from sklearn.ensemble import *
+from sklearn.linear_model import *
 from sklearn.model_selection import *
 from sklearn.model_selection import train_test_split
+from sklearn.neighbors import *
 from sklearn.neighbors import NearestNeighbors
 # from bobo_pipeline import Pipeline
 from sklearn.pipeline import Pipeline
@@ -95,7 +98,6 @@ def generate_node_id(type="", who="", user="", tag="", experiment_number="") -> 
     return node_id
 
 def generate_node_filepath(folder, node_id, type):
-    print(type)
     if type == "model":
         format = '.joblib'
     else:
@@ -103,7 +105,7 @@ def generate_node_filepath(folder, node_id, type):
 
     return os.path.join(folder, node_id + format)
 
-def generate_node(who, user, collection="", collection_version="", experiment_number=EXP_NUM, pipeline_id="", tag=TAG, type='data', folder=DATA_FOLDER, node_id="", src_id="", dag=None):
+def generate_node(who, user, collection="", collection_version="", experiment_number=EXP_NUM, pipeline_id="", tag=TAG, type='data', metrics="" , folder=DATA_FOLDER, node_id="", src_id="", dag=None):
     if node_id == "":
         node_id = generate_node_id(type, who, user, tag, experiment_number)
 
@@ -111,6 +113,7 @@ def generate_node(who, user, collection="", collection_version="", experiment_nu
 
     if src_id == "" and dag is None:
         node_info = {
+                    'id': node_id,
                     'who': who,
                     'user': user,
                     'date': current_date(),
@@ -122,10 +125,14 @@ def generate_node(who, user, collection="", collection_version="", experiment_nu
                     'type': type, # data or model
                     'pipeline_id': pipeline_id, # comma seperate, global server has 1 id, collab has many id
                     'operation': "", # comma seperate
-                    'filepath': node_filepath
+                    'filepath': node_filepath,
+                    'metrics': metrics,
+                    'x_headers': "", # comma seperate, global server has 1 id, collab has many id -> list of strings
+                    'y_headers': "",
                 }
     else:
         node_info = dag.get_node_attr(src_id)
+        node_info['id'] = node_id
         node_info['date'] = current_date()
         node_info['time'] = current_time()
         node_info['tag'] = tag
@@ -133,19 +140,17 @@ def generate_node(who, user, collection="", collection_version="", experiment_nu
         node_info['experiment_number'] = experiment_number
         node_info['operation'] = ""
         node_info['filepath'] = node_filepath
+        node_info['metrics'] = metrics
     
     return node_id, node_info, node_filepath
 
-XHEADER =  ['AGE','HBP_d_all_systolic', 'HBP_d_AM_systolic',
-       'HBP_d_PM_systolic', 'HBP_d_all_diastolic', 'HBP_d_AM_diastolic',
-       'HBP_d_PM_diastolic', 'HBP_d_systolic_D1_AM1', 'HBP_d_systolic_D1_AM2',
-       'aspirin']
+XHEADER = ['HBP_d_all_systolic','HBP_d_AM_systolic','HBP_d_PM_systolic','HBP_d_all_diastolic','HBP_d_AM_diastolic','HBP_d_PM_diastolic','HBP_d_systolic_D1_AM1','AGE','aspirin']
 YHEADER = 'CV'
 
 def build_pipeline(dag, src_id, ops, param_list, x_header=XHEADER,y_header=YHEADER,experiment_number=EXP_NUM, tag=TAG):
 
     data_path = dag.get_node_attr(src_id)['filepath']
-    dataframe = pd.read_csv(data_path).fillna(0)
+    dataframe = pd.read_csv(data_path)
     X = dataframe.drop(y_header, axis=1, errors="ignore") # TODO: change header to number or catch exception or record the header change in pipeline (recommand)
     X = X.drop('_id', axis=1, errors="ignore")
 
@@ -172,6 +177,8 @@ def build_pipeline(dag, src_id, ops, param_list, x_header=XHEADER,y_header=YHEAD
         save_model(node_filepath, pipe.steps[-1][1].fit(X,y))
         dag.add_node(node_id, **node_info)
         dag.add_edge(src_id, node_id)
+
+        
         return node_id
 
     # is data

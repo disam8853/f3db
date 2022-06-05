@@ -26,10 +26,7 @@ import requests
 from joblib import dump, load
 from utils import getexception, predict_and_convert_to_metric_str, parse_condition_dict_to_tuple_list
 
-XHEADER =  ['AGE','HBP_d_all_systolic', 'HBP_d_AM_systolic',
-       'HBP_d_PM_systolic', 'HBP_d_all_diastolic', 'HBP_d_AM_diastolic',
-       'HBP_d_PM_diastolic', 'HBP_d_systolic_D1_AM1', 'HBP_d_systolic_D1_AM2',
-       'aspirin']
+XHEADER = ['HBP_d_all_systolic','HBP_d_AM_systolic','HBP_d_PM_systolic','HBP_d_all_diastolic','HBP_d_AM_diastolic','HBP_d_PM_diastolic','HBP_d_systolic_D1_AM1','AGE','aspirin']
 YHEADER = 'CV'
 
 env = Env()
@@ -136,8 +133,7 @@ async def train_model():
 
     pipeline_id = data['pipeline_id']
     # get newest experiment number
-    experiment_number = find_greatest_exp_num(
-        dag, pipeline_id, data['collection']) + 1
+    experiment_number = str(find_greatest_exp_num(dag, pipeline_id, data['collection']) + 1)
     if pipeline_id in WAITING_PIPELINE:
         return make_response(jsonify(error=f'Pipeline {pipeline_id} has started fitting.', pipeline=WAITING_PIPELINE[pipeline_id]), 400)
 
@@ -350,6 +346,6 @@ def find_greatest_exp_num(dag, pipeline_id, collection) -> int:
     try:
         condition = [('pipeline_id', pipeline_id), ('collection', collection)]
         nids = dag.get_nodes_with_condition(condition)
-        return dag.get_max_attribute_node(nids, 'experiment_number')
+        return int(dag.get_best_node_by_attribute(nids, 'experiment_number', ">"))
     except TypeError:
         return 0
