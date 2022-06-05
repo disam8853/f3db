@@ -29,6 +29,25 @@ from joblib import dump, load
 from utils import getexception, predict_and_convert_to_metric_str, parse_condition_dict_to_tuple_list, get_certain_attributes_from_dict
 import threading
 
+from datetime import datetime
+"""
+start_time = timer(None)
+timer(start_time)
+"""
+
+
+def timer(start_time=None, title=""):
+    if not start_time:
+        start_time = datetime.now()
+        return start_time
+    elif start_time:
+        thour, temp_sec = divmod(
+            (datetime.now() - start_time).total_seconds(), 3600)
+        tmin, tsec = divmod(temp_sec, 60)
+        print('\n' + title + ' Time taken: %i hours %i minutes and %s seconds.' %
+              (thour, tmin, round(tsec, 2)))
+
+
 XHEADER = ['HBP_d_all_systolic', 'HBP_d_AM_systolic', 'HBP_d_PM_systolic', 'HBP_d_all_diastolic',
            'HBP_d_AM_diastolic', 'HBP_d_PM_diastolic', 'HBP_d_systolic_D1_AM1', 'AGE', 'aspirin']
 YHEADER = 'CV'
@@ -47,6 +66,7 @@ dag = DAG("./DATA_FOLDER/graph.gml.gz")
 
 WAITING_PIPELINE = {}
 DATA = {}
+TIMER = None
 
 sem = threading.Semaphore()
 
@@ -55,9 +75,11 @@ sem = threading.Semaphore()
 def get():
     return 'OK'
 
+
 @app.route("/dag_node_and_leave", methods=['GET'])
 def dag_node_and_leave():
     return jsonify(roots=dag.roots, leaves=dag.leaves, nodes=dag.nodes)
+
 
 @app.route("/clear", methods=['GET'])
 def clear_volumn():
@@ -164,8 +186,10 @@ async def train_model():
         return Response('pipeline not found', 404)
 
     if src_id != "" and src['who'] == 'global-server':
+        start_time = timer(None)
         run_pipeline(dag, src_id, experiment_number, pipeline, True)
         sem.release()
+        timer(start_time)
         return jsonify(pipeline_id=pipeline_id, experiment_number=experiment_number, collection=data['collection'])
     else:
         sem.release()
@@ -175,6 +199,8 @@ async def train_model():
             await asyncio.gather(*[post(f'{col["address"]}/data/process', {**request.json, "pipeline_id": col['id'], "experiment_number": experiment_number}, session) for col in collaborator_pipieline_ids])
     except Exception:
         return Response('Request a train failed!', 500)
+    global TIMER
+    TIMER = timer(None)
 
     WAITING_PIPELINE[pipeline_id] = {
         "experiment_number": experiment_number,
@@ -219,7 +245,7 @@ def merge_pipeline_api():
         try:
             experiment_number = WAITING_PIPELINE[pipeline_id]['experiment_number']
             collection = WAITING_PIPELINE[pipeline_id]['collection']
-            
+
             src_id = merge_pipeline(dag, DATA[pipeline_id],
                                     pipeline_id, experiment_number, collection)
             try:
@@ -229,13 +255,14 @@ def merge_pipeline_api():
                 run_pipeline(dag, src_id, experiment_number, pipeline)
             except Exception as e:
                 getexception(e)
-                
+
         except Exception as e:
             sem.release()
             return Response('Merge failed.\n' + str(e), 400)
         del WAITING_PIPELINE[pipeline_id]
         del DATA[pipeline_id]
         sem.release()
+        timer(TIMER)
         return jsonify(model_id=src_id)
 
     del pipeline['_id']
@@ -283,7 +310,7 @@ def predict_model(model_id):
 
     sem.acquire()
     try:
-        
+
         result = transform_and_predict(dag, df, model_id, pipeline)
     except NameError:
         return Response('model not found', 404)
