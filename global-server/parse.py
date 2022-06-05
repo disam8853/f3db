@@ -1,13 +1,16 @@
 import json
-from tabnanny import check
-from sklearn.preprocessing import FunctionTransformer, StandardScaler
-import pip 
-from sklearn.svm import SVC
-from sklearn.decomposition import PCA
+
 import numpy as np
-from sklearn.linear_model import LinearRegression
-from sklearn.preprocessing import *
+from sklearn.decomposition import *
 from sklearn.ensemble import *
+from sklearn.impute import *
+from sklearn.linear_model import *
+from sklearn.model_selection import *
+from sklearn.neighbors import *
+from sklearn.pipeline import *
+from sklearn.preprocessing import *
+from sklearn.svm import *
+
 
 def read_raw_pipe():
     with open('test.json') as f:

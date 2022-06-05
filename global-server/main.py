@@ -152,12 +152,14 @@ async def train_model():
     experiment_number = str(find_greatest_exp_num(
         dag, pipeline_id, data['collection']) + 1)
     if pipeline_id in WAITING_PIPELINE:
+        sem.release()
         return make_response(jsonify(error=f'Pipeline {pipeline_id} has started fitting.', pipeline=WAITING_PIPELINE[pipeline_id]), 400)
 
     try:
         pipeline = find_pipeline_by_id(pipeline_id)
         collaborator_pipieline_ids = pipeline['collaborator_pipieline_ids']
     except Exception:
+        sem.release()
         return Response('pipeline not found', 404)
 
     if src_id != "" and src['who'] == 'global-server':
@@ -212,10 +214,11 @@ def merge_pipeline_api():
         p for p in WAITING_PIPELINE[pipeline_id]['collaborators'] if p.get('id') != col_pipeline_id]
 
     if len(WAITING_PIPELINE[pipeline_id]['collaborators']) == 0:
+        sem.acquire()
         try:
             experiment_number = WAITING_PIPELINE[pipeline_id]['experiment_number']
             collection = WAITING_PIPELINE[pipeline_id]['collection']
-            sem.acquire()
+            
             src_id = merge_pipeline(dag, DATA[pipeline_id],
                                     pipeline_id, experiment_number, collection)
             try:
@@ -225,12 +228,13 @@ def merge_pipeline_api():
                 run_pipeline(dag, src_id, experiment_number, pipeline)
             except Exception as e:
                 getexception(e)
-            finally:
-                sem.release()
+                
         except Exception as e:
+            sem.release()
             return Response('Merge failed.\n' + str(e), 400)
         del WAITING_PIPELINE[pipeline_id]
         del DATA[pipeline_id]
+        sem.release()
         return jsonify(model_id=src_id)
 
     del pipeline['_id']
@@ -276,15 +280,16 @@ def predict_model(model_id):
         return Response('pipeline not found', 404)
     df = pd.DataFrame.from_dict(row_data)
 
+    sem.acquire()
     try:
-        sem.acquire()
+        
         result = transform_and_predict(dag, df, model_id, pipeline)
     except NameError:
         return Response('model not found', 404)
     except Exception as e:
         return Response('predict error\n' + str(e), 500)
-    finally:
-        sem.release()
+
+    sem.release()
 
     return jsonify(result=result.tolist())
 

@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import networkx as nx
 from networkx.readwrite import json_graph
-from utils import current_time, current_date
+from utils import current_time, current_date, getexception, comma_str_to_list
 from functools import singledispatch, update_wrapper
 import json
 import numpy as np
-from operator import le, ge
+from operator import ge, le
+from time import sleep
 
 class NpEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -21,6 +22,18 @@ class NpEncoder(json.JSONEncoder):
         return super(NpEncoder, self).default(obj)
 
 class DAG():
+    class NodeNotFound(Exception):
+        def __init__(self, node_id, message="node not found in dag"):
+            self.node_id = node_id
+            self.message = message
+            super().__init__(f"{self.message}, node id: {self.node_id}")
+
+    class GraphUsing(Exception):
+        def __init__(self, who, message="dag is freezed"):
+            self.who = who
+            self.message = message
+            super().__init__(f"{self.message}, who: {self.who}")
+
     def dag_refresh(func):
         # if change graph structure, refresh dag metadata
         def wrapper(self, *args, **kwargs):
@@ -32,7 +45,7 @@ class DAG():
             self.number_of_edges = nx.number_of_edges(self.G)
             self.number_of_nodes = nx.number_of_nodes(self.G)
             self.type = type(self.G)
-            
+
             self.save_graph("./DATA_FOLDER/graph.gml.gz")
             return output
         return wrapper
@@ -56,6 +69,8 @@ class DAG():
         self.number_of_edges = 0
         self.number_of_nodes = 0
         self.type = None
+        self.comma_attributes = ['operation', 'x_headers', 'metrics']
+        self.integer_attributes = ['experiment_number']
         self.init_attributes = {
                 'node_id': "",
                 'who': 'global-server',
@@ -67,7 +82,7 @@ class DAG():
                 'experiment_number': 0,
                 'tag': 'test-tag',
                 'type': 'data', # data or model
-                'pipeline_id': "", # comma seperate, global server has 1 id, collab has many id
+                'pipeline_id': "",
                 'operation': "", # comma seperate
                 'filepath':'default filepath',
                 'x_headers': "", # comma seperate, global server has 1 id, collab has many id -> list of strings
@@ -82,7 +97,8 @@ class DAG():
                 self.G = json_graph.node_link_graph(graph_object)
             else:
                 self.G = graph_object
-        except:
+        except Exception as e:
+            getexception(e)
             self.G = nx.MultiDiGraph()
 
     @dag_refresh
@@ -155,7 +171,8 @@ class DAG():
 
     def get_node_attr(self, index) -> dict:
         if not self.G.has_node(index):
-            return False
+            # return False
+            raise self.NodeNotFound
         # shallow copy
         return self.G.nodes[index].copy()
 
@@ -190,19 +207,22 @@ class DAG():
         s = self.G.subgraph(nx.dfs_tree(self.G, src_id="1").nodes()).copy()
         return s
 
-    def get_nodes_with_attributes(self, attribute, value) -> list:
-        selected_data = [ n for n,d in self.G.nodes().items() if d[attribute] == value]
-        return selected_data
+    # def get_nodes_with_attributes(self, attribute, value) -> list:
+    #     selected_data = [ n for n,d in self.G.nodes().items() if d[attribute] == value]
+    #     return selected_data
 
-    def get_nodes_with_two_attributes(self, a1, v1, a2, v2) -> list:
-        selected_data = [ n for n,d in self.G.nodes().items() if ((d[a1] == v1) and (d[a2] == v2))]
-        return selected_data
+    # def get_nodes_with_two_attributes(self, a1, v1, a2, v2) -> list:
+    #     selected_data = [ n for n,d in self.G.nodes().items() if ((d[a1] == v1) and (d[a2] == v2))]
+    #     return selected_data
 
     def get_nodes_with_condition(self, condition, return_info=False) -> list:
         # condition = [("who", 'global-server'), ("user", 'bobo'), ("collection_version", 3)] 
         def check(n, d, con):
             for attr, val in con:
-                if d[attr] != val:
+                if attr in self.comma_attributes:
+                    if val not in comma_str_to_list(d[attr]):
+                        return None
+                elif d[attr] != val:
                     return None
             return n
 
@@ -229,8 +249,7 @@ class DAG():
                 max_attribute = attr_value
 
         return max_attribute
-    
-    
+
     def get_best_node_by_attribute(self, node_id_list: list, attribute:str, sign:function=None):
         if sign is None:
             sign = ge # dafault is greate than
@@ -239,16 +258,28 @@ class DAG():
                 sign = ge
             elif sign == "<":
                 sign = le
-        
+        best_value = 0
         for index, node_id in enumerate(node_id_list):
             node = self.get_node_attr(node_id)
+
             if index == 0:
                 best_value = node[attribute]
             attr_value = node[attribute]
+
+            if attribute in self.integer_attributes:
+                if index == 0:
+                    best_value = int(node[attribute])
+                attr_value = int(node[attribute])
             if not sign(best_value, attr_value):
                 best_value = attr_value
+
         return best_value
-    
+
+
+            
+
+
+
 
 if __name__ == "__main__":
     print("\n**** create graph ****")

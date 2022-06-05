@@ -2,7 +2,6 @@ import os
 import pickle
 from platform import node
 from random import choice, randrange
-
 import joblib
 import networkx as nx
 import numpy as np
@@ -22,10 +21,7 @@ from sklearn.neighbors import NearestNeighbors
 # from bobo_pipeline import Pipeline
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import *
-from sklearn.preprocessing import (FunctionTransformer, MinMaxScaler,
-                                   StandardScaler)
 from sklearn.svm import *
-from sklearn.svm import SVC
 from sklearn.utils.validation import check_is_fitted
 
 from dag import DAG
@@ -52,7 +48,6 @@ env.read_env()
 XHEADER = ['HBP_d_all_systolic','HBP_d_AM_systolic','HBP_d_PM_systolic','HBP_d_all_diastolic','HBP_d_AM_diastolic','HBP_d_PM_diastolic','HBP_d_systolic_D1_AM1','AGE','aspirin']
 YHEADER = 'CV'
 
-
 def compare_collection_version(version1, version2):
     if version1 == version2:
         return True
@@ -63,10 +58,11 @@ def generate_collection_version(dataframe):
     hash = h(dataframe).sum()
     return str(hash)
 
+
 def build_root_data_node(dag, dataframe, collection_name, collection_version, pipeline_id, experiment_number, new_node_id):
-    
+    x_header = ",".join(XHEADER)
     node_id, node_info, node_filepath = generate_node(
-            who=env('WHO'), user=env('USER'), collection=collection_name, collection_version=collection_version, pipeline_id=pipeline_id, experiment_number=experiment_number, tag=TAG, type='root', folder=DATA_FOLDER, node_id=new_node_id)
+            who=env('WHO'), user=env('USER'), collection=collection_name, collection_version=collection_version, pipeline_id=pipeline_id, experiment_number=experiment_number, x_headers=x_header, y_headers=YHEADER, tag=TAG, type='root', folder=DATA_FOLDER, node_id=new_node_id)
     
     save_data(node_filepath, dataframe)
     dag.add_node(node_id, **node_info)
@@ -115,7 +111,7 @@ def generate_node_filepath(folder, node_id, type):
 
     return os.path.join(folder, node_id + format)
 
-def generate_node(who, user, collection="", collection_version="", experiment_number=EXP_NUM, pipeline_id="", tag=TAG, type='data', metrics="", operation="", folder=DATA_FOLDER, XHEADER="", YHEADER="", node_id="", src_id="", dag=None):
+def generate_node(who, user, collection="", collection_version="", experiment_number=EXP_NUM, pipeline_id="", tag=TAG, type='data', metrics="", operation="", folder=DATA_FOLDER, x_headers="", y_headers="", node_id="", src_id="", dag=None):
     if node_id == "":
         node_id = generate_node_id(type, who, user, tag, experiment_number)
 
@@ -137,8 +133,8 @@ def generate_node(who, user, collection="", collection_version="", experiment_nu
                     'operation': operation, # comma seperate
                     'filepath': node_filepath,
                     'metrics': metrics,
-                    'XHEADER': XHEADER, # comma seperate
-                    'YHEADER': YHEADER,
+                    'x_headers': x_headers, # comma seperate
+                    'y_headers': y_headers,
                 }
     else:
         node_info = dag.get_node_attr(src_id)
@@ -164,11 +160,10 @@ def build_pipeline(dag, src_id, ops, param_list, x_header=XHEADER,y_header=YHEAD
     X = X.drop('_id', axis=1, errors="ignore")
 
     y =  dataframe[y_header] # sklearn will drop header after some data transformation
-    # print('Origin',X)
     pipe_string = parse_pipe_to_string(ops)
     
     pipe = Pipeline(ops)
-    # print('opssss:',ops)
+
     # is model
     if (ops[-1][0] == 'model'):
         print('is model')
@@ -211,11 +206,7 @@ def build_pipeline(dag, src_id, ops, param_list, x_header=XHEADER,y_header=YHEAD
         
         y = pd.DataFrame(y)
         final_data = pd.concat([trans_pd_data,y],axis=1)
-        # print(final_data.shape)
-        # final_data.columns = x_header.append(y_header)
-        
-        # print('after transform',final_data)
-        # print('stephanie', node_filepath)
+
         save_data(node_filepath, final_data)
         dag.add_node(node_id, **node_info)
         dag.add_edge(src_id, node_id)
@@ -326,8 +317,6 @@ def train_test_split_training(dag, model_pipeline, src_id, param_list):  # TODO 
     print('testing data result : ', test_results)
 
 
-     
-
 
 def save_data(filepath, trans_data) -> None:
     trans_data.to_csv(filepath, index = False)
@@ -339,7 +328,6 @@ def save_model(filepath, clf) -> None:
 
 def read_model():
     clf = load('DATA_FOLDER/model_global-server_bobo_default-tag_2022-05-28_0.joblib')
-    # print(clf.classes_)
 
 def parse_pipe_to_string(ops):
     op_str = ""
@@ -349,16 +337,13 @@ def parse_pipe_to_string(ops):
             op_str += item
         else:
             op_str += str(',') + item
-    # print(op_str)
     return op_str
 
 if __name__ == "__main__":
     op_data = [('pca', PCA()), ('scaler', StandardScaler())]
     dag = DAG(nx.MultiDiGraph())
     dag = build_pipeline(dag, 1, op_data)
-    print(dag.nodes_info)
 
     op_model = [('pca', PCA()), ('scaler', StandardScaler()), ('svc', SVC())]
     dag = DAG(nx.MultiDiGraph())
     dag = build_pipeline(dag, 1, op_model)
-    print(dag.nodes_info)

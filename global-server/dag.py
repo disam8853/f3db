@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import networkx as nx
 from networkx.readwrite import json_graph
-from utils import current_time, current_date, getexception
+from utils import current_time, current_date, getexception, comma_str_to_list
 from functools import singledispatch, update_wrapper
 import json
 import numpy as np
@@ -69,6 +69,8 @@ class DAG():
         self.number_of_edges = 0
         self.number_of_nodes = 0
         self.type = None
+        self.comma_attributes = ['operation', 'x_headers', 'metrics']
+        self.integer_attributes = ['experiment_number']
         self.init_attributes = {
                 'node_id': "",
                 'who': 'global-server',
@@ -80,7 +82,7 @@ class DAG():
                 'experiment_number': 0,
                 'tag': 'test-tag',
                 'type': 'data', # data or model
-                'pipeline_id': "", # comma seperate, global server has 1 id, collab has many id
+                'pipeline_id': "",
                 'operation': "", # comma seperate
                 'filepath':'default filepath',
                 'x_headers': "", # comma seperate, global server has 1 id, collab has many id -> list of strings
@@ -217,7 +219,10 @@ class DAG():
         # condition = [("who", 'global-server'), ("user", 'bobo'), ("collection_version", 3)] 
         def check(n, d, con):
             for attr, val in con:
-                if d[attr] != val:
+                if attr in self.comma_attributes:
+                    if val not in comma_str_to_list(d[attr]):
+                        return None
+                elif d[attr] != val:
                     return None
             return n
 
@@ -256,11 +261,18 @@ class DAG():
         best_value = 0
         for index, node_id in enumerate(node_id_list):
             node = self.get_node_attr(node_id)
+
             if index == 0:
                 best_value = node[attribute]
             attr_value = node[attribute]
+
+            if attribute in self.integer_attributes:
+                if index == 0:
+                    best_value = int(node[attribute])
+                attr_value = int(node[attribute])
             if not sign(best_value, attr_value):
                 best_value = attr_value
+
         return best_value
 
 
