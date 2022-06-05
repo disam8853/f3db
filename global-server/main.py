@@ -1,3 +1,4 @@
+from search import get_k_best_models, find_match_nodes
 from typing import Type
 from flask import Flask, request, abort, Response, jsonify, make_response
 from environs import Env
@@ -26,7 +27,8 @@ import requests
 from joblib import dump, load
 from utils import getexception, predict_and_convert_to_metric_str, parse_condition_dict_to_tuple_list
 
-XHEADER = ['HBP_d_all_systolic','HBP_d_AM_systolic','HBP_d_PM_systolic','HBP_d_all_diastolic','HBP_d_AM_diastolic','HBP_d_PM_diastolic','HBP_d_systolic_D1_AM1','AGE','aspirin']
+XHEADER = ['HBP_d_all_systolic', 'HBP_d_AM_systolic', 'HBP_d_PM_systolic', 'HBP_d_all_diastolic',
+           'HBP_d_AM_diastolic', 'HBP_d_PM_diastolic', 'HBP_d_systolic_D1_AM1', 'AGE', 'aspirin']
 YHEADER = 'CV'
 
 env = Env()
@@ -132,8 +134,16 @@ async def train_model():
             return Response(f'Must provide correct {attr}!', 400)
 
     pipeline_id = data['pipeline_id']
+    src_id = data['src_id']
+    try:
+        if src_id != "":
+            src = dag.get_node_attr(src_id)
+    except:
+        return make_response(jsonify(error=f'src {src_id} not found.'), 404)
+
     # get newest experiment number
-    experiment_number = str(find_greatest_exp_num(dag, pipeline_id, data['collection']) + 1)
+    experiment_number = str(find_greatest_exp_num(
+        dag, pipeline_id, data['collection']) + 1)
     if pipeline_id in WAITING_PIPELINE:
         return make_response(jsonify(error=f'Pipeline {pipeline_id} has started fitting.', pipeline=WAITING_PIPELINE[pipeline_id]), 400)
 
@@ -142,6 +152,10 @@ async def train_model():
         collaborator_pipieline_ids = pipeline['collaborator_pipieline_ids']
     except Exception:
         return Response('pipeline not found', 404)
+
+    if src_id != "" and src['who'] == 'global-server':
+        run_pipeline(dag, src_id, experiment_number, pipeline, True)
+        return jsonify(pipeline_id=pipeline_id, experiment_number=experiment_number, collection=data['collection'])
 
     try:
         async with aiohttp.ClientSession() as session:
@@ -198,7 +212,7 @@ def merge_pipeline_api():
                 pipeline_id = dag.get_node_attr(src_id)['pipeline_id']
                 pipeline = find_pipeline_by_id(pipeline_id)
                 run_pipeline(dag, src_id, experiment_number, pipeline)
-                
+
             except Exception as e:
                 getexception(e)
         except Exception as e:
@@ -256,7 +270,7 @@ def predict_model(model_id):
 
     return jsonify(result=result.tolist())
 
-from search import get_k_best_models, find_match_nodes
+
 @app.route('/model/get_k_best', methods=["POST"])
 def get_top_k_models():
     data = request.json
@@ -272,6 +286,7 @@ def get_top_k_models():
 
     node_id_list = get_k_best_models(dag, k, metric, condition)
     return jsonify(node_id_list)
+
 
 def find_pipeline_by_id(pipeline_id):
     return pipelines_db.find_one({'_id': ObjectId(pipeline_id)}, {"_id": 0})
@@ -325,7 +340,7 @@ def parse_client_pipeline(raw_pipe_data):
 
         for idx in range(len(pipe)):
             # print(pipe[idx])
-            if(pipe[idx]['name'] != 'SaveData' and pipe[idx]['name'] != 'train_test_split') :
+            if(pipe[idx]['name'] != 'SaveData' and pipe[idx]['name'] != 'train_test_split'):
 
                 strp = pipe[idx]['name']+'()'
                 if check_fitted(eval(strp)) or (pipe[idx]['name'] in ref_list):
@@ -336,9 +351,8 @@ def parse_client_pipeline(raw_pipe_data):
             else:  # SaveData
                 continue
     return sub_pipeline
- 
 
-        
+
 def find_greatest_exp_num(dag, pipeline_id, collection) -> int:
     # nids = dag.get_nodes_with_two_attributes(
     #     'pipeline_id', pipeline_id, 'collection', collection)

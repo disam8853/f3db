@@ -218,15 +218,23 @@ def build_pipeline(dag, src_id, ops, param_list, x_header=XHEADER,y_header=YHEAD
         # print('EWW',final_data)
         return node_id
 
-def run_pipeline(dag, src_id, experiment_number, pipeline):
+def run_pipeline(dag, src_id, experiment_number, pipeline, from_begin=False):
 # def run_pipeline(rawpipe):
     # 進到split 不進行save data
     # 後面直接併成一整條pipeline
 
 
     # # do pipeline (chung)
-    pipe_param_string = parse_global_param(pipeline, 'global-server')
-    parsed_pipeline = parse_global_pipeline(pipeline, "global-server")
+    pipe_param_string = []
+    if from_begin == True:
+        pipe_param_string += parse_global_param(pipeline, 'collaborator')
+    pipe_param_string += parse_global_param(pipeline, 'global-server')
+    
+    parsed_pipeline = []
+    if from_begin == True:
+        parsed_pipeline += parse_global_pipeline(pipeline, 'collaborator')
+    parsed_pipeline += parse_global_pipeline(pipeline, "global-server")
+    
     # parsed_pipeline = parse_global_pipeline(raw_pipe, "global-server")
     print('PipeParam',pipe_param_string,parsed_pipeline)
 
@@ -246,12 +254,11 @@ def run_pipeline(dag, src_id, experiment_number, pipeline):
 
 def parse_global_pipeline(raw_pipe_data,character):
     final_pipeline = []
-    param_pipeline = []
     sub_pipeline = []
     pipe = raw_pipe_data[character]
     for idx in range(len(pipe)):
         # print(pipe[idx])
-        if(pipe[idx]['name'] != 'train_test_split'):
+        if(pipe[idx]['name'] != 'train_test_split' and pipe[idx]['name'] != 'SaveData'):
             strp = pipe[idx]['name']+'()'
             if check_fitted(eval(strp)):
                 sub_pipeline.append(('model',eval(strp)))
@@ -266,6 +273,9 @@ def parse_global_pipeline(raw_pipe_data,character):
             final_pipeline.append(sub_pipeline)
             sub_pipeline = []
             final_pipeline.append('train_test_split')
+        elif(pipe[idx]['name'] == 'SaveData'):
+            final_pipeline.append(sub_pipeline)
+            sub_pipeline = []
    
 
     final_pipeline.append(sub_pipeline)
