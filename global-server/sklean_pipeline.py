@@ -5,6 +5,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import FunctionTransformer, StandardScaler
 from sklearn.svm import SVC
+from sklearn.impute import SimpleImputer
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import LabelEncoder
 import numpy as np

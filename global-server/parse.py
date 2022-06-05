@@ -3,6 +3,7 @@ from tabnanny import check
 from sklearn.preprocessing import FunctionTransformer, StandardScaler
 import pip 
 from sklearn.svm import SVC
+from sklearn.impute import SimpleImputer
 from sklearn.decomposition import PCA
 import numpy as np
 from sklearn.linear_model import LinearRegression

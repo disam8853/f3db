@@ -22,6 +22,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import *
 from sklearn.preprocessing import FunctionTransformer, StandardScaler
 from sklearn.svm import SVC
+from sklearn.impute import SimpleImputer
 from sklearn.utils.validation import check_is_fitted
 
 from dag import DAG
@@ -156,6 +157,7 @@ def build_pipeline(dag, src_id, ops, param_list, x_header=XHEADER,y_header=YHEAD
 
     y =  dataframe[y_header] # sklearn will drop header after some data transformation
     pipe_string = parse_pipe_to_string(ops)
+    print('HHHHHHHH',pipe_string)
     
     pipe = Pipeline(ops)
 
@@ -211,6 +213,7 @@ def read_model():
     clf = load('DATA_FOLDER/model_global-server_bobo_default-tag_2022-05-28_0.joblib')
 
 def parse_pipe_to_string(ops):
+    
     op_str = ""
     for step in ops:
         item = str(step[1])

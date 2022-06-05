@@ -25,6 +25,7 @@ from sklearn.preprocessing import (FunctionTransformer, MinMaxScaler,
                                    StandardScaler)
 from sklearn.svm import *
 from sklearn.svm import SVC
+from sklearn.impute import SimpleImputer
 from sklearn.utils.validation import check_is_fitted
 
 from dag import DAG
@@ -162,7 +163,7 @@ def build_pipeline(dag, src_id, ops, param_list, x_header=XHEADER,y_header=YHEAD
     y =  dataframe[y_header] # sklearn will drop header after some data transformation
     # print('Origin',X)
     pipe_string = parse_pipe_to_string(ops)
-    
+    print('HHHHH Global',pipe_string)
     pipe = Pipeline(ops)
     # print('opssss:',ops)
     # is model
@@ -276,7 +277,8 @@ def train_test_split_training(dag, model_pipeline, src_id, param_list):  # TODO 
     print("start train test split")
     data_path = dag.get_node_attr(src_id)['filepath']
     experiment_number = dag.get_node_attr(src_id)['experiment_number']
-
+    pipe_string = parse_pipe_to_string(model_pipeline)
+    # print('glglglgobal: ', pipe_string)
     data = pd.read_csv(data_path)
 
 
