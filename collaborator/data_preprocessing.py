@@ -64,7 +64,12 @@ def long_data_transform(lock, dag: DAG, df: pd.DataFrame, collection_name: str, 
 
     # reuse old node
     else:
-        pass
+        
+        sep = src_id.split("_")
+        sep[1] = env('WHO')
+        src_id = "_".join(sep)
+        print(src_id)
+
 
     # parse: pipeline dict to real pipline (chung)
     parsed_pipeline = parse(pipeline, 'collaborator')

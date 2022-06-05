@@ -25,7 +25,7 @@ import joblib
 import os
 import requests
 from joblib import dump, load
-from utils import getexception, predict_and_convert_to_metric_str, parse_condition_dict_to_tuple_list
+from utils import getexception, predict_and_convert_to_metric_str, parse_condition_dict_to_tuple_list, get_certain_attributes_from_dict
 
 XHEADER = ['HBP_d_all_systolic', 'HBP_d_AM_systolic', 'HBP_d_PM_systolic', 'HBP_d_all_diastolic',
            'HBP_d_AM_diastolic', 'HBP_d_PM_diastolic', 'HBP_d_systolic_D1_AM1', 'AGE', 'aspirin']
@@ -292,19 +292,23 @@ def find_pipeline_by_id(pipeline_id):
     return pipelines_db.find_one({'_id': ObjectId(pipeline_id)}, {"_id": 0})
 
 
-@app.route("/pipeline/get_match_node_id", methods=["POST"])
+@app.route("/pipeline/get_match_node", methods=["POST"])
 def get_match_nodes():
     data = request.json
 
-    for attr in ['condition']:
+    for attr in ['condition', 'required_attributes']:
         if attr not in data:
             return Response(f'Must provide correct {attr}!', 400)
 
     condition_dict = data['condition']
+    required_attributes = data['required_attributes']
     condition = parse_condition_dict_to_tuple_list(condition_dict)
-    node_id_list = find_match_nodes(dag, condition)
+    node_list = find_match_nodes(dag, condition)
 
-    return jsonify(node_id_list)
+    if len(required_attributes) > 0:
+        node_list = get_certain_attributes_from_dict(node_list, required_attributes)
+
+    return jsonify(node_list)
 
 
 # TODO: function parameter -> dag, df, model_id, raw_pipe_data:dict

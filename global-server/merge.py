@@ -3,7 +3,7 @@ from webbrowser import get
 from dag import DAG
 from utils import pickle_decode,  getexception
 import pandas as pd
-from f3db_pipeline import generate_node, save_data
+from f3db_pipeline import generate_node, save_data, generate_collection_version
 
 DATA_FOLDER = "./DATA_FOLDER/"
 WHO = 'global-server'
@@ -29,13 +29,14 @@ def merge_pipeline(global_dag: DAG, collaborator_data: list, global_pipeline_id:
     # TODO: create empty dataframe
     global_df = pd.DataFrame()
 
-    # TODO: crete new_data_node with empty file
-    # TODO: change variables
+    # crete new_data_node with empty file
+
     global_node_id, global_node_info, global_node_filepath = generate_node(
         who=WHO, user=USER, collection=collection, collection_version=COLLECTION_VERSION, experiment_number=experiment_number, pipeline_id=global_pipeline_id, tag=TAG, type='data', folder=DATA_FOLDER)
     global_dag.add_node(global_node_id, **global_node_info)
+    
     # iter each collaborator post data
-    for data in collaborator_data:
+    for index, data in enumerate(collaborator_data):
         try:
             # TODO: if data is json, turn data into dict
 
@@ -43,14 +44,19 @@ def merge_pipeline(global_dag: DAG, collaborator_data: list, global_pipeline_id:
             colab_dag = DAG(data['dag_json'])
             colab_df = pickle_decode(data['dataframe'])
             colab_last_node = data['last_node']
-
+            
+            
             # TODO: check collaborator dag
+            if index == 0:
+                colab_dag_info =  colab_dag.get_node_attr(colab_last_node)
+                global_dag.G.nodes[global_node_id]['x_headers'] = colab_dag_info['x_headers']
+                global_dag.G.nodes[global_node_id]['y_headers'] = colab_dag_info['y_headers']
+                global_dag.G.nodes[global_node_id]['user'] = colab_dag_info['user']
+
 
             # merge data
             global_df = pd.concat([global_df, colab_df])
 
-            # find last colab_data_node by colab_pipeline_id
-            # colab_node_id = colab_dag.get_nodes_with_attributes("pipeline_id", colab_pipeline_id)
 
             # merge global_dag & colab_dag
             global_dag.dag_compose(colab_dag.G)
@@ -61,7 +67,7 @@ def merge_pipeline(global_dag: DAG, collaborator_data: list, global_pipeline_id:
         except Exception as e:
             getexception(e)
 
-    
+    global_dag.G.nodes[global_node_id]['collection_version'] = generate_collection_version(global_df)
     save_data(global_node_filepath, global_df)
     
     return global_node_id
