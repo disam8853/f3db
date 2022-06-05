@@ -11,6 +11,7 @@ from sklearn.preprocessing import LabelEncoder
 import numpy as np
 from random import randrange, choice
 from sklearn.neighbors import NearestNeighbors
+from time import sleep
 
 def basic_classification_pipeline():
     def check_fitted(clf): 
@@ -44,6 +45,15 @@ def basic_classification_pipeline():
     # print("show number_of_edges: ", pipe.dag.number_of_edges)
     # print("show edges: ", pipe.dag.get_node_edges(pipe.dag.get_topological_sort()))
     # print("finish")
+
+class CalculateEntropyLong(BaseEstimator, TransformerMixin):
+    def transform(self, x, y=None):
+        for i in range(int(x.shape[0]//100)):
+            sleep(1)
+        return x
+    def fit(self, x, y=None):
+        return self
+
 
 class FillNa(BaseEstimator, TransformerMixin):
 

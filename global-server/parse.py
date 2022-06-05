@@ -9,6 +9,7 @@ from sklearn.neighbors import *
 from sklearn.pipeline import *
 from sklearn.preprocessing import *
 from sklearn.svm import *
+from sklean_pipeline import *
 
 
 def read_raw_pipe():
