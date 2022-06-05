@@ -1,0 +1,63 @@
+version: "3.9"
+services:
+  dev2-global-server:
+    container_name: dev2-global-server
+    build: ../global-server
+    ports:
+      - 30000:8000
+    volumes:
+      - ../global-server:/app
+      - ./volumn/global-server/DATA_FOLDER:/app/DATA_FOLDER
+    environment:
+      - MONGODB_URL=mongodb://dev2-mongo-global:27017/f3db
+      - FLASK_APP=main.py
+      - FLASK_ENV=development
+      - FLASK_RUN_PORT=8000
+      - FLASK_RUN_HOST=0.0.0.0
+      - WHO=global-server
+      - USER=admin
+      - COLLABORATORS_URL=http://dev2-collaborator1:8000
+      - PYTHONUNBUFFERED=1
+  dev2-collaborator1:
+    container_name: dev2-collaborator1
+    build: ../collaborator
+    volumes:
+      - ../collaborator:/app
+      - ./volumn/collaborator1/DATA_FOLDER:/app/DATA_FOLDER
+    environment:
+      - MONGODB_URL=mongodb://dev2-mongo1:27017/f3db
+      - GLOBAL_SERVER_URL=http://dev2-global-server:8000
+      - FLASK_APP=main.py
+      - FLASK_ENV=development
+      - FLASK_RUN_PORT=8000
+      - FLASK_RUN_HOST=0.0.0.0
+      - WHO=collaborator1
+      - USER=admin
+      - PYTHONUNBUFFERED=1
+      - DATA_FOLDER=./DATA_FOLDER/
+      - db_name=f3db
+  dev2-mongo-global:
+    image: mongo
+    volumes:
+      - ./volumn/global-server/mongodb:/data/db
+    ports:
+      - 37027:27017
+    restart: always
+    environment:
+      - MONGO_INITDB_DATABASE=f3db
+  dev2-mongo1:
+    image: mongo
+    volumes:
+      - ./volumn/collaborator1/mongodb:/data/db
+    ports:
+      - 37037:27017
+    restart: always
+    environment:
+      - MONGO_INITDB_DATABASE=f3db
+  dev2-mongo1-seed:
+    image: mongo
+    volumes:
+      - ./seed-data:/seed-data
+    command: mongoimport -h mongo1 --db f3db -c test --type csv --mode upsert --headerline --file /seed-data/collaborator1/pressures.csv
+    depends_on:
+      - mongo1
