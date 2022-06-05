@@ -110,10 +110,10 @@ def generate_node(who, user, collection="", collection_version="", experiment_nu
         node_id = generate_node_id(type, who, user, tag, experiment_number)
 
     node_filepath = generate_node_filepath(folder, node_id, type)
-
+    print(f"node_id : {node_id}")
     if src_id == "" and dag is None:
         node_info = {
-                    'id': node_id,
+                    'node_id': node_id,
                     'who': who,
                     'user': user,
                     'date': current_date(),
@@ -132,7 +132,7 @@ def generate_node(who, user, collection="", collection_version="", experiment_nu
                 }
     else:
         node_info = dag.get_node_attr(src_id)
-        node_info['id'] = node_id
+        node_info['node_id'] = node_id
         node_info['date'] = current_date()
         node_info['time'] = current_time()
         node_info['tag'] = tag

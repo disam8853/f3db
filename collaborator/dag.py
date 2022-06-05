@@ -57,7 +57,7 @@ class DAG():
         self.number_of_nodes = 0
         self.type = None
         self.init_attributes = {
-                'id': "",
+                'node_id': "",
                 'who': 'global-server',
                 'user': 'bobo',
                 'date': current_date(),
@@ -203,25 +203,25 @@ class DAG():
         def check(n, d, con):
             for attr, val in con:
                 if d[attr] != val:
-                    return []
-            return [n]
+                    return None
+            return n
 
-        if return_info:
-            node_list = []
-            for n, d in self.G.nodes().items():
-                node_list.append(self.get_node_attr(check(n, d, condition))[0])
+        node_list = []
+            
+        for n, d in self.G.nodes().items():
+            target_node = check(n, d, condition)
+            if target_node is not None:
+                if return_info:
+                    info = self.get_node_attr(target_node)
+                    node_list.append(info)
+                else:
+                    node_list.append(target_node)
 
-            return node_list
-        else:
-            node_list = []
-            for n, d in self.G.nodes().items():
-                node_list += check(n, d, condition)
-
-            return node_list
+        return node_list
 
     def get_max_attribute_node(self, node_id_list, attribute) -> str:
 
-        max_attribute = 0
+        max_attribute = "0"
         for node_id in node_id_list:
             node = self.get_node_attr(node_id)
             attr_value = node[attribute]
