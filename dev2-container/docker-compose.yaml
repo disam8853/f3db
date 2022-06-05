@@ -58,6 +58,6 @@ services:
     image: mongo
     volumes:
       - ./seed-data:/seed-data
-    command: mongoimport -h mongo1 --db f3db -c test --type csv --mode upsert --headerline --file /seed-data/collaborator1/pressures.csv
+    command: mongoimport -h dev2-mongo1 --db f3db -c test --type csv --mode upsert --headerline --file /seed-data/collaborator1/pressures.csv
     depends_on:
       - mongo1
