@@ -1,5 +1,4 @@
-from crypt import methods
-import json
+from search import get_k_best_models, find_match_nodes
 from typing import Type
 from flask import Flask, request, abort, Response, jsonify, make_response
 from environs import Env
@@ -27,8 +26,10 @@ import os
 import requests
 from joblib import dump, load
 from utils import getexception, predict_and_convert_to_metric_str, parse_condition_dict_to_tuple_list, get_certain_attributes_from_dict
+import threading
 
-XHEADER = ['HBP_d_all_systolic','HBP_d_AM_systolic','HBP_d_PM_systolic','HBP_d_all_diastolic','HBP_d_AM_diastolic','HBP_d_PM_diastolic','HBP_d_systolic_D1_AM1','AGE','aspirin']
+XHEADER = ['HBP_d_all_systolic', 'HBP_d_AM_systolic', 'HBP_d_PM_systolic', 'HBP_d_all_diastolic',
+           'HBP_d_AM_diastolic', 'HBP_d_PM_diastolic', 'HBP_d_systolic_D1_AM1', 'AGE', 'aspirin']
 YHEADER = 'CV'
 
 env = Env()
@@ -45,6 +46,8 @@ dag = DAG("./DATA_FOLDER/graph.gml.gz")
 
 WAITING_PIPELINE = {}
 DATA = {}
+
+sem = threading.Semaphore()
 
 
 @app.route("/", methods=['GET'])
@@ -137,8 +140,17 @@ async def train_model():
             return Response(f'Must provide correct {attr}!', 400)
 
     pipeline_id = data['pipeline_id']
+    src_id = data['src_id']
+    try:
+        if src_id != "":
+            src = dag.get_node_attr(src_id)
+    except:
+        return make_response(jsonify(error=f'src {src_id} not found.'), 404)
+
     # get newest experiment number
-    experiment_number = str(find_greatest_exp_num(dag, pipeline_id, data['collection']) + 1)
+    sem.acquire()
+    experiment_number = str(find_greatest_exp_num(
+        dag, pipeline_id, data['collection']) + 1)
     if pipeline_id in WAITING_PIPELINE:
         return make_response(jsonify(error=f'Pipeline {pipeline_id} has started fitting.', pipeline=WAITING_PIPELINE[pipeline_id]), 400)
 
@@ -147,6 +159,13 @@ async def train_model():
         collaborator_pipieline_ids = pipeline['collaborator_pipieline_ids']
     except Exception:
         return Response('pipeline not found', 404)
+
+    if src_id != "" and src['who'] == 'global-server':
+        run_pipeline(dag, src_id, experiment_number, pipeline, True)
+        sem.release()
+        return jsonify(pipeline_id=pipeline_id, experiment_number=experiment_number, collection=data['collection'])
+    else:
+        sem.release()
 
     try:
         async with aiohttp.ClientSession() as session:
@@ -196,6 +215,7 @@ def merge_pipeline_api():
         try:
             experiment_number = WAITING_PIPELINE[pipeline_id]['experiment_number']
             collection = WAITING_PIPELINE[pipeline_id]['collection']
+            sem.acquire()
             src_id = merge_pipeline(dag, DATA[pipeline_id],
                                     pipeline_id, experiment_number, collection)
             try:
@@ -203,9 +223,10 @@ def merge_pipeline_api():
                 pipeline_id = dag.get_node_attr(src_id)['pipeline_id']
                 pipeline = find_pipeline_by_id(pipeline_id)
                 run_pipeline(dag, src_id, experiment_number, pipeline)
-                
             except Exception as e:
                 getexception(e)
+            finally:
+                sem.release()
         except Exception as e:
             return Response('Merge failed.\n' + str(e), 400)
         del WAITING_PIPELINE[pipeline_id]
@@ -225,7 +246,10 @@ async def get_pipeline_status(pipeline_id):
             return Response(f'Must provide correct {attr} in query parameter!', 400)
     cond = [("collection", collection), ("experiment_number",
                                          str(experiment_number)), ("pipeline_id", pipeline_id), ("type", "model")]
+    sem.acquire()
     nids = dag.get_nodes_with_condition(cond)
+    sem.release()
+
     if len(nids) == 0:
         return Response('there is no model found', 400)
     elif len(nids) != 1:
@@ -253,15 +277,18 @@ def predict_model(model_id):
     df = pd.DataFrame.from_dict(row_data)
 
     try:
+        sem.acquire()
         result = transform_and_predict(dag, df, model_id, pipeline)
     except NameError:
         return Response('model not found', 404)
     except Exception as e:
         return Response('predict error\n' + str(e), 500)
+    finally:
+        sem.release()
 
     return jsonify(result=result.tolist())
 
-from search import get_k_best_models, find_match_nodes
+
 @app.route('/model/get_k_best', methods=["POST"])
 def get_top_k_models():
     data = request.json
@@ -275,8 +302,12 @@ def get_top_k_models():
     condition_dict = data['condition']
     condition = parse_condition_dict_to_tuple_list(condition_dict)
 
+    sem.acquire()
     node_id_list = get_k_best_models(dag, k, metric, condition)
+    sem.release()
+
     return jsonify(node_id_list)
+
 
 def find_pipeline_by_id(pipeline_id):
     return pipelines_db.find_one({'_id': ObjectId(pipeline_id)}, {"_id": 0})
@@ -293,10 +324,13 @@ def get_match_nodes():
     condition_dict = data['condition']
     required_attributes = data['required_attributes']
     condition = parse_condition_dict_to_tuple_list(condition_dict)
+    sem.acquire()
     node_list = find_match_nodes(dag, condition)
+    sem.release()
 
     if len(required_attributes) > 0:
-        node_list = get_certain_attributes_from_dict(node_list, required_attributes)
+        node_list = get_certain_attributes_from_dict(
+            node_list, required_attributes)
 
     return jsonify(node_list)
 
@@ -334,7 +368,7 @@ def parse_client_pipeline(raw_pipe_data):
 
         for idx in range(len(pipe)):
             # print(pipe[idx])
-            if(pipe[idx]['name'] != 'SaveData' and pipe[idx]['name'] != 'train_test_split') :
+            if(pipe[idx]['name'] != 'SaveData' and pipe[idx]['name'] != 'train_test_split'):
 
                 strp = pipe[idx]['name']+'()'
                 if check_fitted(eval(strp)) or (pipe[idx]['name'] in ref_list):
@@ -345,9 +379,8 @@ def parse_client_pipeline(raw_pipe_data):
             else:  # SaveData
                 continue
     return sub_pipeline
- 
 
-        
+
 def find_greatest_exp_num(dag, pipeline_id, collection) -> int:
     # nids = dag.get_nodes_with_two_attributes(
     #     'pipeline_id', pipeline_id, 'collection', collection)
