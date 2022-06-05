@@ -17,6 +17,7 @@ from sklearn.linear_model import *
 from sklearn.model_selection import *
 from sklearn.model_selection import train_test_split
 from sklearn.neighbors import *
+from sklearn.impute import *
 from sklearn.neighbors import NearestNeighbors
 # from bobo_pipeline import Pipeline
 from sklearn.pipeline import Pipeline

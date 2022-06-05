@@ -9,6 +9,7 @@ from functools import singledispatch, update_wrapper
 import json
 import numpy as np
 from operator import ge, le
+from time import sleep
 
 class NpEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -26,6 +27,12 @@ class DAG():
             self.node_id = node_id
             self.message = message
             super().__init__(f"{self.message}, node id: {self.node_id}")
+
+    class GraphUsing(Exception):
+        def __init__(self, who, message="dag is freezed"):
+            self.who = who
+            self.message = message
+            super().__init__(f"{self.message}, who: {self.who}")
 
     def dag_refresh(func):
         # if change graph structure, refresh dag metadata

@@ -1,3 +1,5 @@
+from crypt import methods
+import json
 from typing import Type
 from flask import Flask, request, abort, Response, jsonify, make_response
 from environs import Env
@@ -49,6 +51,9 @@ DATA = {}
 def get():
     return 'OK'
 
+@app.route("/dag_node_and_leave", methods=['GET'])
+def dag_node_and_leave():
+    return jsonify(roots=dag.roots, leaves=dag.leaves, nodes=dag.nodes)
 
 @app.route("/clear", methods=['GET'])
 def clear_volumn():
