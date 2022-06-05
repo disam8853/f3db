@@ -16,7 +16,7 @@ def get_k_best_models(dag:DAG, k:int, metric:str, condition=None, **kwargs) -> l
     k = min(len(node_list), k)
     sorted_node_list = sorted(node_list, key=lambda n: metric_str_to_dict(n['metrics'])[metric], reverse=True)[:k]
 
-    return [n['filepath'].replace("./DATA_FOLDER/","").replace(".joblib", "") for n in sorted_node_list]
+    return [(n['node_id'], metric_str_to_dict(n['metrics'])[metric]) for n in sorted_node_list]
 
 
 
