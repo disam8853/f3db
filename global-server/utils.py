@@ -57,3 +57,15 @@ def predict_and_convert_to_metric_str(y_test, y_pred):
 def metric_str_to_dict(result_str):
     return dict(zip(["accuracy","precision", "recall","f1"], map(lambda x: float(x), result_str.split(","))))
     
+
+def get_certain_attributes_from_dict(old_list_dict, required_attributes:list):
+    new_dict_list = []
+ 
+    for old_dict in old_list_dict:
+        new_dict = {}
+        for k, v in old_dict.items():
+            if k in required_attributes:
+                new_dict[k] = v
+        new_dict_list.append(new_dict)
+    return new_dict_list
+
