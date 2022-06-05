@@ -1,5 +1,4 @@
 import json
-
 import numpy as np
 from sklearn.decomposition import *
 from sklearn.ensemble import *

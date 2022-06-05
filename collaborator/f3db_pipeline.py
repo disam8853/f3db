@@ -57,7 +57,7 @@ def generate_collection_version(dataframe):
 def build_root_data_node(dag, dataframe, collection_name, collection_version, pipeline_id, experiment_number, new_node_id):
     x_header = ",".join(XHEADER)
     node_id, node_info, node_filepath = generate_node(
-            who=env('WHO'), user=env('USER'), collection=collection_name, collection_version=collection_version, pipeline_id=pipeline_id, experiment_number=experiment_number, x_headers=x_header, y_headers=YHEADER, tag=TAG, type='root', folder=DATA_FOLDER, node_id=new_node_id)
+            who=env('WHO'), user=env('USER'), collection=collection_name, collection_version=collection_version, pipeline_id=pipeline_id, experiment_number=experiment_number, x_headers=x_header, y_headers=YHEADER, tag=TAG, type='root', folder=DATA_FOLDER, node_id=new_node_id, operation="build_root_data")
     
     save_data(node_filepath, dataframe)
     dag.add_node(node_id, **node_info)
@@ -67,7 +67,7 @@ def build_root_data_node(dag, dataframe, collection_name, collection_version, pi
 def build_child_data_node(dag, dataframe, collection_name, collection_version, experiment_number, src_id, new_src_id=""):
     
     new_src_id, node_info, node_filepath = generate_node(
-        env('WHO'), env('USER'), collection_name, collection_version, experiment_number, type='data', node_id=new_src_id, src_id=src_id, dag=dag)
+        env('WHO'), env('USER'), collection_name, collection_version, experiment_number, type='data', node_id=new_src_id, src_id=src_id, dag=dag, operation="build_child_data")
     save_data(node_filepath, dataframe)
     dag.add_node(src_id, **node_info)
     dag.add_edge(src_id, new_src_id)
@@ -156,6 +156,7 @@ def build_pipeline(dag, src_id, ops, param_list, x_header=XHEADER,y_header=YHEAD
 
     y =  dataframe[y_header] # sklearn will drop header after some data transformation
     pipe_string = parse_pipe_to_string(ops)
+    print('colaborator pipe string: ',pipe_string)
     
     pipe = Pipeline(ops)
 
@@ -171,7 +172,7 @@ def build_pipeline(dag, src_id, ops, param_list, x_header=XHEADER,y_header=YHEAD
 
 
         node_id, node_info, node_filepath = generate_node(
-            who=env('WHO'), user=env('USER'), experiment_number=experiment_number, tag=TAG, type='model', src_id=src_id, dag=dag)
+            who=env('WHO'), user=env('USER'), experiment_number=experiment_number, tag=TAG, type='model', src_id=src_id, dag=dag, operation=pipe_string)
         pipe.set_params(**param_list)
         
         save_model(node_filepath, pipe.steps[-1][1].fit(X,y))
@@ -191,8 +192,7 @@ def build_pipeline(dag, src_id, ops, param_list, x_header=XHEADER,y_header=YHEAD
     else:
     
         node_id, node_info, node_filepath = generate_node(
-            who=env('WHO'), user=env('USER'), experiment_number=experiment_number, tag=TAG, type='data', src_id=src_id, dag=dag)
-        print('is data')
+            who=env('WHO'), user=env('USER'), experiment_number=experiment_number, tag=TAG, type='data', src_id=src_id, dag=dag,operation=pipe_string)
         pipe.set_params(**param_list)
         trans_data = pipe.fit_transform(X,y)
         
@@ -325,6 +325,7 @@ def read_model():
     clf = load('DATA_FOLDER/model_global-server_bobo_default-tag_2022-05-28_0.joblib')
 
 def parse_pipe_to_string(ops):
+    
     op_str = ""
     for step in ops:
         item = str(step[1])

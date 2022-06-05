@@ -32,7 +32,7 @@ def merge_pipeline(global_dag: DAG, collaborator_data: list, global_pipeline_id:
     # crete new_data_node with empty file
 
     global_node_id, global_node_info, global_node_filepath = generate_node(
-        who=WHO, user=USER, collection=collection, collection_version=COLLECTION_VERSION, experiment_number=experiment_number, pipeline_id=global_pipeline_id, tag=TAG, type='data', folder=DATA_FOLDER)
+        who=WHO, user=USER, collection=collection, collection_version=COLLECTION_VERSION, experiment_number=experiment_number, pipeline_id=global_pipeline_id, tag=TAG, type='data', folder=DATA_FOLDER, operation="merge")
     global_dag.add_node(global_node_id, **global_node_info)
     
     # iter each collaborator post data

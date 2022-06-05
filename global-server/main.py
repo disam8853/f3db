@@ -14,6 +14,7 @@ import pandas as pd
 from parse import parse, parse_param, check_fitted
 from f3db_pipeline import run_pipeline, build_child_data_node, get_max_surrogate_number, generate_collection_version, compare_collection_version, build_root_data_node, build_pipeline
 from sklearn.svm import SVC
+from sklearn.impute import SimpleImputer
 from sklearn.decomposition import PCA
 import numpy as np
 from sklearn.linear_model import LinearRegression
