@@ -23,7 +23,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import *
 from sklearn.svm import *
 from sklearn.utils.validation import check_is_fitted
-
+from sklean_pipeline import *
 from dag import DAG
 
 from utils import current_date, current_time, predict_and_convert_to_metric_str
