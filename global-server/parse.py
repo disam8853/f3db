@@ -52,7 +52,7 @@ def parse_param(raw_pipe_data, character):
     pipe = raw_pipe_data[character]
     for idx in range(len(pipe)):
         # print('yeeeeeeeeeeeeeeeeeeeeee',pipe[idx])
-        if(pipe[idx]['name'] != 'SaveData' and pipe[idx]['parameter'] and pipe[idx]['name'] != 'SaveData'):
+        if(pipe[idx]['name'] != 'SaveData' and pipe[idx]['parameter']):
             
             # for param in pipe[idx]['parameter'][0]:
             #     newkey = pipe[idx]['name']+'__'+ param
